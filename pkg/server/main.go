@@ -6,13 +6,13 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/ince01/note-server/internal/graph"
+	"gorm.io/gorm"
 )
 
 const defaultPort = "8080"
 
 // Run the server
-func Run() {
-
+func Run(db *gorm.DB) {
 	port := os.Getenv("PORT")
 	if port == "" {
 		port = defaultPort
@@ -28,7 +28,7 @@ func Run() {
 	})
 
 	// GraphQL Routes
-	r.POST("/graphql", graph.Handler())
+	r.POST("/graphql", graph.Handler(db))
 	r.GET("/graphql", graph.PlaygroundHandler())
 
 	r.Run(":" + defaultPort)

@@ -1,8 +1,10 @@
 package resolvers
 
-import "github.com/ince01/note-server/internal/graph/model"
+import (
+	"gorm.io/gorm"
+)
 
 // Resolver is ...
 type Resolver struct {
-	todos []*model.Todo
+	DB *gorm.DB
 }

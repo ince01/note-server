@@ -6,48 +6,40 @@ package resolvers
 import (
 	"context"
 	"fmt"
-	"math/rand"
 
+	"github.com/99designs/gqlgen/graphql"
 	"github.com/ince01/note-server/internal/graph/generated"
 	"github.com/ince01/note-server/internal/graph/model"
+	"github.com/ince01/note-server/internal/orm/models"
+	"github.com/vektah/gqlparser/v2/gqlerror"
 )
 
 func (r *mutationResolver) CreateTodo(ctx context.Context, input model.NewTodo) (*model.Todo, error) {
-	todo := &model.Todo{
-		Text:   input.Text,
-		ID:     fmt.Sprintf("%d", rand.Int()),
-		UserID: input.UserID,
+	todo := models.Todo{
+		Text: input.Text,
 	}
 
-	r.todos = append(r.todos, todo)
+	tx := r.DB.Create(&todo)
 
-	return todo, nil
+	if tx.Error != nil {
+		graphql.AddError(ctx, gqlerror.Errorf(tx.Error.Error()))
+	}
+
+	return &model.Todo{
+		ID:   "1",
+		Text: todo.Text,
+		Done: todo.Done,
+	}, nil
 }
 
 func (r *queryResolver) Todos(ctx context.Context) ([]*model.Todo, error) {
-	return r.todos, nil
-}
+	var todo *models.Todo
 
-func (r *queryResolver) Users(ctx context.Context) ([]*model.User, error) {
-	panic(fmt.Errorf("not implemented"))
-}
+	r.DB.Find(todo)
 
-func (r *queryResolver) User(ctx context.Context) (*model.User, error) {
-	user := &model.User{
-		ID:   "!xxx",
-		Name: "xxx",
-	}
+	fmt.Println(todo)
 
-	return user, nil
-}
-
-func (r *todoResolver) User(ctx context.Context, obj *model.Todo) (*model.User, error) {
-	result := &model.User{
-		ID:   obj.UserID,
-		Name: "user " + obj.UserID,
-	}
-
-	return result, nil
+	return nil, nil
 }
 
 // Mutation returns generated.MutationResolver implementation.
@@ -56,9 +48,5 @@ func (r *Resolver) Mutation() generated.MutationResolver { return &mutationResol
 // Query returns generated.QueryResolver implementation.
 func (r *Resolver) Query() generated.QueryResolver { return &queryResolver{r} }
 
-// Todo returns generated.TodoResolver implementation.
-func (r *Resolver) Todo() generated.TodoResolver { return &todoResolver{r} }
-
 type mutationResolver struct{ *Resolver }
 type queryResolver struct{ *Resolver }
-type todoResolver struct{ *Resolver }
