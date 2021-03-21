@@ -32,10 +32,6 @@ func (r *mutationResolver) CreateTodo(ctx context.Context, input model.NewTodo) 
 }
 
 func (r *queryResolver) Todos(ctx context.Context) ([]*model.Todo, error) {
-	var todo models.Todo
-
-	r.DB.Find(&todo)
-
 	return nil, nil
 }
 
