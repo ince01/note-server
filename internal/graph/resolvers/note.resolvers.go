@@ -12,7 +12,7 @@ import (
 	"github.com/ince01/note-server/internal/orm/models"
 )
 
-func (r *noteResolver) CreatedBy(ctx context.Context, obj *model.Note) (*model.User, error) {
+func (r *noteResolver) CreatedBy(_ context.Context, obj *model.Note) (*model.User, error) {
 	user := &models.User{}
 
 	tx := r.DB.First(user, obj.CreatedBy.ID)
