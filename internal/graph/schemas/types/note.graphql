@@ -1,0 +1,17 @@
+type Note
+  @goModel(model: "github.com/ince01/note-server/internal/graph/model.Note") {
+  id: ID!
+  title: String!
+  content: String!
+  createdBy: User! @goField(forceResolver: true)
+  createdAt: Time!
+}
+
+input NoteInput
+  @goModel(
+    model: "github.com/ince01/note-server/internal/graph/model.NoteInput"
+  ) {
+  title: String!
+  content: String!
+  createdBy: ID!
+}

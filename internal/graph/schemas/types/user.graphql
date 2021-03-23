@@ -1,0 +1,18 @@
+type User @goModel(model: "github.com/ince01/note-server/internal/graph/model.User") {
+  id: ID!
+  firstName: String!
+  lastName: String!
+  email: String!
+  password: String!
+  phone: String
+  avatarURL: String
+  createdAt: Time!
+}
+
+input UserInput
+  @goModel(model: "github.com/ince01/note-server/internal/graph/model.UserInput") {
+  email: String!
+  firstName: String!
+  lastName: String!
+  password: String!
+}

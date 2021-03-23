@@ -30,8 +30,6 @@ func main() {
 		log.Fatalf("Error loading .env file")
 	}
 
-	fmt.Println(connectionString())
-
 	db, err := gorm.Open(postgres.New(postgres.Config{
 		DSN:                  connectionString(),
 		PreferSimpleProtocol: true, // disables implicit prepared statement usage
@@ -41,7 +39,10 @@ func main() {
 		panic("failed to connect database")
 	}
 
-	db.AutoMigrate(&models.Todo{})
+	db.AutoMigrate(
+		&models.User{},
+		&models.Note{},
+	)
 
 	server.Run(db)
 }

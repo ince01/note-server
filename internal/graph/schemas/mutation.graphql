@@ -1,0 +1,5 @@
+type Mutation {
+  noteCreate(note: NoteInput!): Note!
+
+  userCreate(user: UserInput!): User!
+}

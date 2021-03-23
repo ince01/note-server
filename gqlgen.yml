@@ -13,3 +13,4 @@ resolver:
   filename_template: "{name}.resolvers.go"
 autobind:
   - "github.com/ince01/note-server/internal/graph/model"
+omit_slice_element_pointers: true

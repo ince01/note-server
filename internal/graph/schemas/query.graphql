@@ -1,0 +1,7 @@
+type Query {
+  note(id: Int!): Note
+  notes(limit: Int, offset: Int): [Note!]!
+
+  user(id: Int!): User
+  users(limit: Int, offset: Int): [User!]!
+}
