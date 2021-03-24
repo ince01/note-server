@@ -18,18 +18,22 @@ func Run(db *gorm.DB) {
 		port = defaultPort
 	}
 
-	r := gin.Default()
+	router := gin.New()
+
+	router.Use(gin.Logger())
+
+	router.Use(gin.Recovery())
 
 	// Health check
-	r.GET("/ping", func(c *gin.Context) {
+	router.GET("/ping", func(c *gin.Context) {
 		c.JSON(http.StatusOK, gin.H{
 			"message": "pong",
 		})
 	})
 
 	// GraphQL Routes
-	r.POST("/graphql", graph.Handler(db))
-	r.GET("/graphql", graph.PlaygroundHandler())
+	router.POST("/graphql", graph.Handler(db))
+	router.GET("/graphql", graph.PlaygroundHandler())
 
-	r.Run(":" + defaultPort)
+	router.Run(":" + defaultPort)
 }

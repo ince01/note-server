@@ -6,7 +6,7 @@ type Note struct {
 	ID        string    `json:"id"`
 	Title     string    `json:"title"`
 	Content   string    `json:"Content"`
-	CreatedBy *User     `json:"createdBy"`
+	CreatedBy string    `json:"createdBy"`
 	CreatedAt time.Time `json:"createdAt"`
 }
 

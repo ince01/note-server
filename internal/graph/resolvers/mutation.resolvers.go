@@ -35,14 +35,68 @@ func (r *mutationResolver) NoteCreate(ctx context.Context, note model.NoteInput)
 	}
 
 	return &model.Note{
-		ID:      fmt.Sprint(newNote.ID),
-		Title:   newNote.Title,
-		Content: newNote.Content,
+		ID:        fmt.Sprint(newNote.ID),
+		Title:     newNote.Title,
+		Content:   newNote.Content,
+		CreatedBy: note.CreatedBy,
 	}, nil
 }
 
 func (r *mutationResolver) UserCreate(ctx context.Context, user model.UserInput) (*model.User, error) {
-	panic(fmt.Errorf("not implemented"))
+	newUser := &models.User{
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Email:     user.Email,
+		Password:  user.Password,
+	}
+
+	tx := r.DB.Where("email = ?", user.Email).First(newUser)
+
+	if tx.RowsAffected > 0 {
+		return nil, fmt.Errorf("User has been registered with this email.")
+	}
+
+	tx = r.DB.Create(newUser)
+
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	return &model.User{
+		ID:        fmt.Sprint(newUser.ID),
+		FirstName: newUser.FirstName,
+		LastName:  newUser.LastName,
+		Email:     newUser.Email,
+		Phone:     &newUser.Phone,
+		AvatarURL: &newUser.AvatarUrl,
+		CreatedAt: newUser.CreatedAt,
+	}, nil
+}
+
+func (r *mutationResolver) UserDelete(ctx context.Context, id string) (*model.User, error) {
+	var user models.User
+
+	tx := r.DB.First(&user, id)
+
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	tx = r.DB.Delete(&user)
+
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	return &model.User{
+		ID:        fmt.Sprint(user.ID),
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Email:     user.Email,
+		Phone:     &user.Phone,
+		AvatarURL: &user.AvatarUrl,
+		CreatedAt: user.CreatedAt,
+	}, nil
 }
 
 // Mutation returns generated.MutationResolver implementation.

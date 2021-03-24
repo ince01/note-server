@@ -12,21 +12,24 @@ import (
 	"github.com/ince01/note-server/internal/orm/models"
 )
 
-func (r *noteResolver) CreatedBy(_ context.Context, obj *model.Note) (*model.User, error) {
-	user := &models.User{}
+func (r *noteResolver) CreatedBy(ctx context.Context, obj *model.Note) (*model.User, error) {
+	var user models.User
 
-	tx := r.DB.First(user, obj.CreatedBy.ID)
+	tx := r.DB.First(&user, obj.CreatedBy)
+
+	if tx.RowsAffected < 1 {
+		return nil, nil
+	}
 
 	return &model.User{
 		ID:        fmt.Sprint(user.ID),
 		FirstName: user.FirstName,
 		LastName:  user.LastName,
 		Email:     user.Email,
-		Password:  user.Password,
 		Phone:     &user.Phone,
 		AvatarURL: &user.AvatarUrl,
 		CreatedAt: user.CreatedAt,
-	}, tx.Error
+	}, nil
 }
 
 // Note returns generated.NoteResolver implementation.

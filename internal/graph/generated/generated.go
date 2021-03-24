@@ -48,6 +48,7 @@ type ComplexityRoot struct {
 	Mutation struct {
 		NoteCreate func(childComplexity int, note model.NoteInput) int
 		UserCreate func(childComplexity int, user model.UserInput) int
+		UserDelete func(childComplexity int, id string) int
 	}
 
 	Note struct {
@@ -70,9 +71,9 @@ type ComplexityRoot struct {
 		CreatedAt func(childComplexity int) int
 		Email     func(childComplexity int) int
 		FirstName func(childComplexity int) int
+		Gender    func(childComplexity int) int
 		ID        func(childComplexity int) int
 		LastName  func(childComplexity int) int
-		Password  func(childComplexity int) int
 		Phone     func(childComplexity int) int
 	}
 }
@@ -80,6 +81,7 @@ type ComplexityRoot struct {
 type MutationResolver interface {
 	NoteCreate(ctx context.Context, note model.NoteInput) (*model.Note, error)
 	UserCreate(ctx context.Context, user model.UserInput) (*model.User, error)
+	UserDelete(ctx context.Context, id string) (*model.User, error)
 }
 type NoteResolver interface {
 	CreatedBy(ctx context.Context, obj *model.Note) (*model.User, error)
@@ -129,6 +131,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.UserCreate(childComplexity, args["user"].(model.UserInput)), true
+
+	case "Mutation.userDelete":
+		if e.complexity.Mutation.UserDelete == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_userDelete_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.UserDelete(childComplexity, args["id"].(string)), true
 
 	case "Note.content":
 		if e.complexity.Note.Content == nil {
@@ -241,6 +255,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.User.FirstName(childComplexity), true
 
+	case "User.gender":
+		if e.complexity.User.Gender == nil {
+			break
+		}
+
+		return e.complexity.User.Gender(childComplexity), true
+
 	case "User.id":
 		if e.complexity.User.ID == nil {
 			break
@@ -254,13 +275,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.User.LastName(childComplexity), true
-
-	case "User.password":
-		if e.complexity.User.Password == nil {
-			break
-		}
-
-		return e.complexity.User.Password(childComplexity), true
 
 	case "User.phone":
 		if e.complexity.User.Phone == nil {
@@ -350,7 +364,9 @@ directive @goField(
   noteCreate(note: NoteInput!): Note!
 
   userCreate(user: UserInput!): User!
-}`, BuiltIn: false},
+  userDelete(id: ID!): User!
+}
+`, BuiltIn: false},
 	{Name: "internal/graph/schemas/query.graphql", Input: `type Query {
   note(id: Int!): Note
   notes(limit: Int, offset: Int): [Note!]!
@@ -379,15 +395,22 @@ scalar Any
 # }
 scalar Upload`, BuiltIn: false},
 	{Name: "internal/graph/schemas/schema.graphql", Input: `schema {
-    query: Query
-    mutation: Mutation
-}`, BuiltIn: false},
+  query: Query
+  mutation: Mutation
+}
+
+enum Gender {
+  MALE
+  FEMALE
+  OTHER
+}
+`, BuiltIn: false},
 	{Name: "internal/graph/schemas/types/note.graphql", Input: `type Note
   @goModel(model: "github.com/ince01/note-server/internal/graph/model.Note") {
   id: ID!
   title: String!
   content: String!
-  createdBy: User! @goField(forceResolver: true)
+  createdBy: User @goField(forceResolver: true)
   createdAt: Time!
 }
 
@@ -400,19 +423,22 @@ input NoteInput
   createdBy: ID!
 }
 `, BuiltIn: false},
-	{Name: "internal/graph/schemas/types/user.graphql", Input: `type User @goModel(model: "github.com/ince01/note-server/internal/graph/model.User") {
+	{Name: "internal/graph/schemas/types/user.graphql", Input: `type User
+  @goModel(model: "github.com/ince01/note-server/internal/graph/model.User") {
   id: ID!
   firstName: String!
   lastName: String!
   email: String!
-  password: String!
+  gender: Gender
   phone: String
   avatarURL: String
   createdAt: Time!
 }
 
 input UserInput
-  @goModel(model: "github.com/ince01/note-server/internal/graph/model.UserInput") {
+  @goModel(
+    model: "github.com/ince01/note-server/internal/graph/model.UserInput"
+  ) {
   email: String!
   firstName: String!
   lastName: String!
@@ -453,6 +479,21 @@ func (ec *executionContext) field_Mutation_userCreate_args(ctx context.Context, 
 		}
 	}
 	args["user"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_userDelete_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 string
+	if tmp, ok := rawArgs["id"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+		arg0, err = ec.unmarshalNID2string(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["id"] = arg0
 	return args, nil
 }
 
@@ -671,6 +712,48 @@ func (ec *executionContext) _Mutation_userCreate(ctx context.Context, field grap
 	return ec.marshalNUser2ᚖgithubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐUser(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Mutation_userDelete(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_userDelete_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Mutation().UserDelete(rctx, args["id"].(string))
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.User)
+	fc.Result = res
+	return ec.marshalNUser2ᚖgithubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐUser(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Note_id(ctx context.Context, field graphql.CollectedField, obj *model.Note) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -801,14 +884,11 @@ func (ec *executionContext) _Note_createdBy(ctx context.Context, field graphql.C
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
 	res := resTmp.(*model.User)
 	fc.Result = res
-	return ec.marshalNUser2ᚖgithubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐUser(ctx, field.Selections, res)
+	return ec.marshalOUser2ᚖgithubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐUser(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Note_createdAt(ctx context.Context, field graphql.CollectedField, obj *model.Note) (ret graphql.Marshaler) {
@@ -1219,7 +1299,7 @@ func (ec *executionContext) _User_email(ctx context.Context, field graphql.Colle
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _User_password(ctx context.Context, field graphql.CollectedField, obj *model.User) (ret graphql.Marshaler) {
+func (ec *executionContext) _User_gender(ctx context.Context, field graphql.CollectedField, obj *model.User) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -1237,21 +1317,18 @@ func (ec *executionContext) _User_password(ctx context.Context, field graphql.Co
 	ctx = graphql.WithFieldContext(ctx, fc)
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return obj.Password, nil
+		return obj.Gender, nil
 	})
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
 	}
 	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
 		return graphql.Null
 	}
-	res := resTmp.(string)
+	res := resTmp.(model.Gender)
 	fc.Result = res
-	return ec.marshalNString2string(ctx, field.Selections, res)
+	return ec.marshalOGender2githubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐGender(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _User_phone(ctx context.Context, field graphql.CollectedField, obj *model.User) (ret graphql.Marshaler) {
@@ -2553,6 +2630,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
+		case "userDelete":
+			out.Values[i] = ec._Mutation_userDelete(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -2599,9 +2681,6 @@ func (ec *executionContext) _Note(ctx context.Context, sel ast.SelectionSet, obj
 					}
 				}()
 				res = ec._Note_createdBy(ctx, field, obj)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
 				return res
 			})
 		case "createdAt":
@@ -2731,11 +2810,8 @@ func (ec *executionContext) _User(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "password":
-			out.Values[i] = ec._User_password(ctx, field, obj)
-			if out.Values[i] == graphql.Null {
-				invalids++
-			}
+		case "gender":
+			out.Values[i] = ec._User_gender(ctx, field, obj)
 		case "phone":
 			out.Values[i] = ec._User_phone(ctx, field, obj)
 		case "avatarURL":
@@ -3439,6 +3515,16 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 		return graphql.Null
 	}
 	return graphql.MarshalBoolean(*v)
+}
+
+func (ec *executionContext) unmarshalOGender2githubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐGender(ctx context.Context, v interface{}) (model.Gender, error) {
+	var res model.Gender
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOGender2githubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐGender(ctx context.Context, sel ast.SelectionSet, v model.Gender) graphql.Marshaler {
+	return v
 }
 
 func (ec *executionContext) unmarshalOInt2ᚖint(ctx context.Context, v interface{}) (*int, error) {

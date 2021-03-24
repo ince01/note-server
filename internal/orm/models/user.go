@@ -8,6 +8,7 @@ type User struct {
 	LastName  string `gorm:"not null"`
 	Email     string `gorm:"not null"`
 	Password  string `gorm:"not null"`
+	Gender    string `gorm:"not null"`
 	Phone     string
 	AvatarUrl string
 	Notes     []Note `gorm:"foreignKey:CreatedBy"`

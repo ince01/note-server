@@ -24,10 +24,10 @@ func connectionString() string {
 
 func main() {
 
-	err := godotenv.Load(".env")
+	err := godotenv.Load()
 
 	if err != nil {
-		log.Fatalf("Error loading .env file")
+		log.Fatal(err)
 	}
 
 	db, err := gorm.Open(postgres.New(postgres.Config{

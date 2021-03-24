@@ -3,7 +3,7 @@ type Note
   id: ID!
   title: String!
   content: String!
-  createdBy: User! @goField(forceResolver: true)
+  createdBy: User @goField(forceResolver: true)
   createdAt: Time!
 }
 

@@ -13,15 +13,27 @@ import (
 )
 
 func (r *queryResolver) Note(ctx context.Context, id int) (*model.Note, error) {
-	panic(fmt.Errorf("not implemented"))
+	note := models.Note{}
+
+	tx := r.DB.First(&note, fmt.Sprint(id))
+
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	return &model.Note{
+		ID:        fmt.Sprint(note.ID),
+		Title:     note.Title,
+		Content:   note.Content,
+		CreatedBy: fmt.Sprint(note.CreatedBy),
+		CreatedAt: note.CreatedAt,
+	}, nil
 }
 
 func (r *queryResolver) Notes(ctx context.Context, limit *int, offset *int) ([]model.Note, error) {
 	var notes []models.Note
 
 	r.DB.Limit(*limit).Offset(*offset).Find(&notes)
-
-	// err := r.DB.Model(&models.Note{}).Association("CreatedBy").Find(&notes)
 
 	var result []model.Note
 
@@ -31,9 +43,7 @@ func (r *queryResolver) Notes(ctx context.Context, limit *int, offset *int) ([]m
 			Title:     v.Title,
 			Content:   v.Content,
 			CreatedAt: v.CreatedAt,
-			CreatedBy: &model.User{
-				ID: fmt.Sprint(v.CreatedBy),
-			},
+			CreatedBy: fmt.Sprint(v.CreatedBy),
 		})
 	}
 
