@@ -7,7 +7,6 @@ type User struct {
 	FirstName string    `json:"firstName"`
 	LastName  string    `json:"lastName"`
 	Email     string    `json:"email"`
-	Gender    Gender    `json:"gender"`
 	Phone     *string   `json:"phone"`
 	AvatarURL *string   `json:"avatarUrl"`
 	CreatedAt time.Time `json:"createdAt"`
@@ -18,4 +17,6 @@ type UserInput struct {
 	FirstName string `json:"firstName"`
 	LastName  string `json:"lastName"`
 	Password  string `json:"password"`
+	Phone     string `json:"phone"`
+	AvatarURL string `json:"avatarUrl"`
 }

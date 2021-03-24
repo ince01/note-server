@@ -4,7 +4,6 @@ type User
   firstName: String!
   lastName: String!
   email: String!
-  gender: Gender
   phone: String
   avatarURL: String
   createdAt: Time!
@@ -18,4 +17,6 @@ input UserInput
   firstName: String!
   lastName: String!
   password: String!
+  phone: String
+  avatarURL: String
 }

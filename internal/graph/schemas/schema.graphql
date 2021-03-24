@@ -2,9 +2,3 @@ schema {
   query: Query
   mutation: Mutation
 }
-
-enum Gender {
-  MALE
-  FEMALE
-  OTHER
-}
