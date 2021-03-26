@@ -7,6 +7,7 @@ type User
   phone: String
   avatarURL: String
   createdAt: Time!
+  gender: Gender!
 }
 
 input UserInput
@@ -19,4 +20,5 @@ input UserInput
   password: String!
   phone: String
   avatarURL: String
+  gender: Gender!
 }

@@ -50,6 +50,7 @@ func (r *mutationResolver) UserCreate(ctx context.Context, user model.UserInput)
 		Password:  user.Password,
 		Phone:     user.Phone,
 		AvatarUrl: user.AvatarURL,
+		Gender:    string(user.Gender),
 	}
 
 	tx := r.DB.Where("email = ?", user.Email).First(newUser)
@@ -72,6 +73,7 @@ func (r *mutationResolver) UserCreate(ctx context.Context, user model.UserInput)
 		Phone:     &newUser.Phone,
 		AvatarURL: &newUser.AvatarUrl,
 		CreatedAt: newUser.CreatedAt,
+		Gender:    model.Gender(newUser.Gender),
 	}, nil
 }
 

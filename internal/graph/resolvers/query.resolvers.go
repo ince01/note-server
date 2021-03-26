@@ -51,7 +51,26 @@ func (r *queryResolver) Notes(ctx context.Context, limit *int, offset *int) ([]m
 }
 
 func (r *queryResolver) User(ctx context.Context, id int) (*model.User, error) {
-	panic(fmt.Errorf("not implemented"))
+	var user models.User
+
+	tx := r.DB.First(&user, id)
+
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	result := &model.User{
+		ID:        fmt.Sprint(user.ID),
+		FirstName: user.FirstName,
+		LastName:  user.LastName,
+		Email:     user.Email,
+		Phone:     &user.Phone,
+		Gender:    model.Gender(user.Gender),
+		AvatarURL: &user.AvatarUrl,
+		CreatedAt: user.CreatedAt,
+	}
+
+	return result, nil
 }
 
 func (r *queryResolver) Users(ctx context.Context, limit *int, offset *int) ([]model.User, error) {

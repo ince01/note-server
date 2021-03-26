@@ -10,6 +10,7 @@ type User struct {
 	Phone     *string   `json:"phone"`
 	AvatarURL *string   `json:"avatarUrl"`
 	CreatedAt time.Time `json:"createdAt"`
+	Gender    Gender    `json:"gender"`
 }
 
 type UserInput struct {
@@ -19,4 +20,5 @@ type UserInput struct {
 	Password  string `json:"password"`
 	Phone     string `json:"phone"`
 	AvatarURL string `json:"avatarUrl"`
+	Gender    Gender `json:"gender"`
 }
