@@ -6,6 +6,7 @@ import (
 
 	"github.com/gin-gonic/gin"
 	"github.com/ince01/note-server/internal/graph"
+	"github.com/ince01/note-server/pkg/middleware"
 	"gorm.io/gorm"
 )
 
@@ -23,6 +24,8 @@ func Run(db *gorm.DB) {
 	router.Use(gin.Logger())
 
 	router.Use(gin.Recovery())
+
+	router.Use(middleware.GinContextToContextMiddleware())
 
 	// Health check
 	router.GET("/ping", func(c *gin.Context) {

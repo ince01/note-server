@@ -18,6 +18,7 @@ func Handler(db *gorm.DB) gin.HandlerFunc {
 		Resolvers: &resolvers.Resolver{
 			DB: db,
 		},
+		Directives: generated.DirectiveRoot{},
 	}))
 
 	return func(c *gin.Context) {

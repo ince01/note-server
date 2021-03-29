@@ -42,6 +42,7 @@ type ResolverRoot interface {
 }
 
 type DirectiveRoot struct {
+	IsAuthenticated func(ctx context.Context, obj interface{}, next graphql.Resolver) (res interface{}, err error)
 }
 
 type ComplexityRoot struct {
@@ -359,6 +360,8 @@ directive @goField(
   forceResolver: Boolean
   name: String
 ) on INPUT_FIELD_DEFINITION | FIELD_DEFINITION
+
+directive @isAuthenticated on FIELD_DEFINITION
 `, BuiltIn: false},
 	{Name: "internal/graph/schemas/mutation.graphql", Input: `type Mutation {
   noteCreate(note: NoteInput!): Note!
