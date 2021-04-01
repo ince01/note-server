@@ -1,7 +1,6 @@
 package jwt
 
 import (
-	"log"
 	"time"
 
 	"github.com/dgrijalva/jwt-go"
@@ -9,21 +8,31 @@ import (
 
 var SecretKey = []byte("secret")
 
-func GenerateToken(username string) (string, error) {
+type AccessToken struct {
+	Jwt string
+	Exp time.Time
+}
+
+func GenerateToken(userId string) (*AccessToken, error) {
 	token := jwt.New(jwt.SigningMethodHS256)
 
 	claims := token.Claims.(jwt.MapClaims)
 
-	claims["username"] = username
-	claims["exp"] = time.Now().Add(time.Hour * 24).Unix()
+	claims["userId"] = userId
+
+	exp := time.Now().Add(time.Hour * 24).Unix()
+	claims["exp"] = exp
 
 	tokenString, err := token.SignedString(SecretKey)
 
 	if err != nil {
-		log.Fatal("Error in Generating key")
-		return "", err
+		return nil, err
 	}
-	return tokenString, nil
+
+	return &AccessToken{
+		Jwt: tokenString,
+		Exp: time.Unix(exp, 0),
+	}, nil
 }
 
 func ParseToken(tokenStr string) (string, error) {
@@ -32,9 +41,9 @@ func ParseToken(tokenStr string) (string, error) {
 	})
 
 	if claims, ok := token.Claims.(jwt.MapClaims); ok && token.Valid {
-		username := claims["username"].(string)
+		userId := claims["userId"].(string)
 
-		return username, nil
+		return userId, nil
 	} else {
 		return "", err
 	}

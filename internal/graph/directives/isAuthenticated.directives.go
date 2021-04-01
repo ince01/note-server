@@ -1,18 +1,19 @@
-// package directives
+package directives
 
-// import (
-// 	"context"
-// 	"fmt"
+import (
+	"context"
+	"fmt"
 
-// 	"github.com/99designs/gqlgen/graphql"
-// )
+	"github.com/99designs/gqlgen/graphql"
+	"github.com/ince01/note-server/internal/auth"
+)
 
-// func (d *Directives) isAuthenticated(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {
-// 	// if !getCurrentUser(ctx).HasRole(role) {
-// 		// block calling the next resolver
-// 		return nil, fmt.Errorf("Access denied")
-// 	}
+func IsAuthenticated(ctx context.Context, obj interface{}, next graphql.Resolver) (interface{}, error) {
+	_, err := auth.ForContext(ctx)
 
-// 	// or let it pass through
-// 	return next(ctx)
-// }
+	if err != nil {
+		return nil, fmt.Errorf("access denied")
+	}
+
+	return next(ctx)
+}

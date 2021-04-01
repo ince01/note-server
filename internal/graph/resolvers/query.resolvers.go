@@ -7,6 +7,7 @@ import (
 	"context"
 	"fmt"
 
+	"github.com/ince01/note-server/internal/auth"
 	"github.com/ince01/note-server/internal/graph/generated"
 	"github.com/ince01/note-server/internal/graph/model"
 	"github.com/ince01/note-server/internal/orm/models"
@@ -30,10 +31,10 @@ func (r *queryResolver) Note(ctx context.Context, id int) (*model.Note, error) {
 	}, nil
 }
 
-func (r *queryResolver) Notes(ctx context.Context, limit *int, offset *int) ([]model.Note, error) {
+func (r *queryResolver) Notes(ctx context.Context, limit int, offset int) ([]model.Note, error) {
 	var notes []models.Note
 
-	r.DB.Limit(*limit).Offset(*offset).Find(&notes)
+	r.DB.Limit(limit).Offset(offset).Find(&notes)
 
 	var result []model.Note
 
@@ -50,10 +51,12 @@ func (r *queryResolver) Notes(ctx context.Context, limit *int, offset *int) ([]m
 	return result, nil
 }
 
-func (r *queryResolver) User(ctx context.Context, id int) (*model.User, error) {
+func (r *queryResolver) User(ctx context.Context) (*model.User, error) {
+	currentUser, _ := auth.ForContext(ctx)
+
 	var user models.User
 
-	tx := r.DB.First(&user, id)
+	tx := r.DB.First(&user, currentUser.ID)
 
 	if tx.Error != nil {
 		return nil, tx.Error
@@ -71,10 +74,6 @@ func (r *queryResolver) User(ctx context.Context, id int) (*model.User, error) {
 	}
 
 	return result, nil
-}
-
-func (r *queryResolver) Users(ctx context.Context, limit *int, offset *int) ([]model.User, error) {
-	panic(fmt.Errorf("not implemented"))
 }
 
 // Query returns generated.QueryResolver implementation.

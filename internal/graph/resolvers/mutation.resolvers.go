@@ -11,6 +11,7 @@ import (
 	"github.com/ince01/note-server/internal/graph/generated"
 	"github.com/ince01/note-server/internal/graph/model"
 	"github.com/ince01/note-server/internal/orm/models"
+	"github.com/ince01/note-server/pkg/jwt"
 )
 
 func (r *mutationResolver) NoteCreate(ctx context.Context, note model.NoteInput) (*model.Note, error) {
@@ -56,7 +57,7 @@ func (r *mutationResolver) UserCreate(ctx context.Context, user model.UserInput)
 	tx := r.DB.Where("email = ?", user.Email).First(newUser)
 
 	if tx.RowsAffected > 0 {
-		return nil, fmt.Errorf("User has been registered with this email.")
+		return nil, fmt.Errorf("user has been registered with this email")
 	}
 
 	tx = r.DB.Create(newUser)
@@ -77,29 +78,32 @@ func (r *mutationResolver) UserCreate(ctx context.Context, user model.UserInput)
 	}, nil
 }
 
-func (r *mutationResolver) UserDelete(ctx context.Context, id string) (*model.User, error) {
-	var user models.User
+func (r *mutationResolver) TokenCreate(ctx context.Context, userCredential model.UserCredential) (*model.Token, error) {
+	user := models.User{}
 
-	tx := r.DB.First(&user, id)
-
-	if tx.Error != nil {
-		return nil, tx.Error
-	}
-
-	tx = r.DB.Delete(&user)
+	tx := r.DB.Where("email = ?", userCredential.UserName).First(&user)
 
 	if tx.Error != nil {
 		return nil, tx.Error
 	}
 
-	return &model.User{
-		ID:        fmt.Sprint(user.ID),
-		FirstName: user.FirstName,
-		LastName:  user.LastName,
-		Email:     user.Email,
-		Phone:     &user.Phone,
-		AvatarURL: &user.AvatarUrl,
-		CreatedAt: user.CreatedAt,
+	isMatchedPassword := user.ComparePassword(userCredential.Password)
+
+	if !isMatchedPassword {
+		return nil, fmt.Errorf("invaild email or password")
+	}
+
+	accessToken, err := jwt.GenerateToken(fmt.Sprint(user.ID))
+
+	if err != nil {
+		return nil, err
+	}
+
+	return &model.Token{
+		TokenType:    model.TokenType(model.TokenTypeBearer),
+		AccessToken:  accessToken.Jwt,
+		ExpiresIn:    accessToken.Exp,
+		RefreshToken: nil,
 	}, nil
 }
 

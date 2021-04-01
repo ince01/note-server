@@ -5,8 +5,8 @@ import (
 	"os"
 
 	"github.com/gin-gonic/gin"
+	"github.com/ince01/note-server/internal/auth"
 	"github.com/ince01/note-server/internal/graph"
-	"github.com/ince01/note-server/pkg/middleware"
 	"gorm.io/gorm"
 )
 
@@ -25,7 +25,7 @@ func Run(db *gorm.DB) {
 
 	router.Use(gin.Recovery())
 
-	router.Use(middleware.GinContextToContextMiddleware())
+	router.Use(auth.Middleware(db))
 
 	// Health check
 	router.GET("/ping", func(c *gin.Context) {

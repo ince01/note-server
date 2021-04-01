@@ -6,6 +6,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"strconv"
 	"sync"
 	"sync/atomic"
@@ -47,9 +48,9 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	Mutation struct {
-		NoteCreate func(childComplexity int, note model.NoteInput) int
-		UserCreate func(childComplexity int, user model.UserInput) int
-		UserDelete func(childComplexity int, id string) int
+		NoteCreate  func(childComplexity int, note model.NoteInput) int
+		TokenCreate func(childComplexity int, userCredential model.UserCredential) int
+		UserCreate  func(childComplexity int, user model.UserInput) int
 	}
 
 	Note struct {
@@ -62,9 +63,15 @@ type ComplexityRoot struct {
 
 	Query struct {
 		Note  func(childComplexity int, id int) int
-		Notes func(childComplexity int, limit *int, offset *int) int
-		User  func(childComplexity int, id int) int
-		Users func(childComplexity int, limit *int, offset *int) int
+		Notes func(childComplexity int, limit int, offset int) int
+		User  func(childComplexity int) int
+	}
+
+	Token struct {
+		AccessToken  func(childComplexity int) int
+		ExpiresIn    func(childComplexity int) int
+		RefreshToken func(childComplexity int) int
+		TokenType    func(childComplexity int) int
 	}
 
 	User struct {
@@ -82,16 +89,15 @@ type ComplexityRoot struct {
 type MutationResolver interface {
 	NoteCreate(ctx context.Context, note model.NoteInput) (*model.Note, error)
 	UserCreate(ctx context.Context, user model.UserInput) (*model.User, error)
-	UserDelete(ctx context.Context, id string) (*model.User, error)
+	TokenCreate(ctx context.Context, userCredential model.UserCredential) (*model.Token, error)
 }
 type NoteResolver interface {
 	CreatedBy(ctx context.Context, obj *model.Note) (*model.User, error)
 }
 type QueryResolver interface {
 	Note(ctx context.Context, id int) (*model.Note, error)
-	Notes(ctx context.Context, limit *int, offset *int) ([]model.Note, error)
-	User(ctx context.Context, id int) (*model.User, error)
-	Users(ctx context.Context, limit *int, offset *int) ([]model.User, error)
+	Notes(ctx context.Context, limit int, offset int) ([]model.Note, error)
+	User(ctx context.Context) (*model.User, error)
 }
 
 type executableSchema struct {
@@ -121,6 +127,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.NoteCreate(childComplexity, args["note"].(model.NoteInput)), true
 
+	case "Mutation.tokenCreate":
+		if e.complexity.Mutation.TokenCreate == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_tokenCreate_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.TokenCreate(childComplexity, args["userCredential"].(model.UserCredential)), true
+
 	case "Mutation.userCreate":
 		if e.complexity.Mutation.UserCreate == nil {
 			break
@@ -132,18 +150,6 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.UserCreate(childComplexity, args["user"].(model.UserInput)), true
-
-	case "Mutation.userDelete":
-		if e.complexity.Mutation.UserDelete == nil {
-			break
-		}
-
-		args, err := ec.field_Mutation_userDelete_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
-
-		return e.complexity.Mutation.UserDelete(childComplexity, args["id"].(string)), true
 
 	case "Note.content":
 		if e.complexity.Note.Content == nil {
@@ -202,31 +208,42 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Notes(childComplexity, args["limit"].(*int), args["offset"].(*int)), true
+		return e.complexity.Query.Notes(childComplexity, args["limit"].(int), args["offset"].(int)), true
 
 	case "Query.user":
 		if e.complexity.Query.User == nil {
 			break
 		}
 
-		args, err := ec.field_Query_user_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
-		}
+		return e.complexity.Query.User(childComplexity), true
 
-		return e.complexity.Query.User(childComplexity, args["id"].(int)), true
-
-	case "Query.users":
-		if e.complexity.Query.Users == nil {
+	case "Token.accessToken":
+		if e.complexity.Token.AccessToken == nil {
 			break
 		}
 
-		args, err := ec.field_Query_users_args(context.TODO(), rawArgs)
-		if err != nil {
-			return 0, false
+		return e.complexity.Token.AccessToken(childComplexity), true
+
+	case "Token.expiresIn":
+		if e.complexity.Token.ExpiresIn == nil {
+			break
 		}
 
-		return e.complexity.Query.Users(childComplexity, args["limit"].(*int), args["offset"].(*int)), true
+		return e.complexity.Token.ExpiresIn(childComplexity), true
+
+	case "Token.refreshToken":
+		if e.complexity.Token.RefreshToken == nil {
+			break
+		}
+
+		return e.complexity.Token.RefreshToken(childComplexity), true
+
+	case "Token.tokenType":
+		if e.complexity.Token.TokenType == nil {
+			break
+		}
+
+		return e.complexity.Token.TokenType(childComplexity), true
 
 	case "User.avatarURL":
 		if e.complexity.User.AvatarURL == nil {
@@ -364,18 +381,18 @@ directive @goField(
 directive @isAuthenticated on FIELD_DEFINITION
 `, BuiltIn: false},
 	{Name: "internal/graph/schemas/mutation.graphql", Input: `type Mutation {
-  noteCreate(note: NoteInput!): Note!
+  noteCreate(note: NoteInput!): Note! @isAuthenticated
 
   userCreate(user: UserInput!): User!
-  userDelete(id: ID!): User!
+
+  tokenCreate(userCredential: UserCredential!): Token!
 }
 `, BuiltIn: false},
 	{Name: "internal/graph/schemas/query.graphql", Input: `type Query {
-  note(id: Int!): Note
-  notes(limit: Int, offset: Int): [Note!]!
+  note(id: Int!): Note @isAuthenticated
+  notes(limit: Int!, offset: Int!): [Note!]! @isAuthenticated
 
-  user(id: Int!): User
-  users(limit: Int, offset: Int): [User!]!
+  user: User @isAuthenticated
 }
 `, BuiltIn: false},
 	{Name: "internal/graph/schemas/scalars.graphql", Input: `# gqlgen supports some custom scalars out of the box
@@ -396,7 +413,9 @@ scalar Any
 # 	Filename string
 # 	Size     int64
 # }
-scalar Upload`, BuiltIn: false},
+scalar Upload
+
+scalar Timestamp`, BuiltIn: false},
 	{Name: "internal/graph/schemas/schema.graphql", Input: `schema {
   query: Query
   mutation: Mutation
@@ -423,6 +442,33 @@ input NoteInput
   title: String!
   content: String!
   createdBy: ID!
+}
+`, BuiltIn: false},
+	{Name: "internal/graph/schemas/types/token.graphql", Input: `type Token
+  @goModel(model: "github.com/ince01/note-server/internal/graph/model.Token") {
+  tokenType: TokenType!
+  accessToken: String!
+  expiresIn: Timestamp!
+  refreshToken: String
+}
+
+input UserCredential
+  @goModel(
+    model: "github.com/ince01/note-server/internal/graph/model.UserCredential"
+  ) {
+  grantType: GrantType!
+  userName: String!
+  password: String!
+  scope: String
+}
+
+enum TokenType {
+  BEARER
+}
+
+enum GrantType {
+  AUTHORIZATION_CODE
+  PASSWORD
 }
 `, BuiltIn: false},
 	{Name: "internal/graph/schemas/types/user.graphql", Input: `type User
@@ -472,6 +518,21 @@ func (ec *executionContext) field_Mutation_noteCreate_args(ctx context.Context, 
 	return args, nil
 }
 
+func (ec *executionContext) field_Mutation_tokenCreate_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 model.UserCredential
+	if tmp, ok := rawArgs["userCredential"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userCredential"))
+		arg0, err = ec.unmarshalNUserCredential2githubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐUserCredential(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["userCredential"] = arg0
+	return args, nil
+}
+
 func (ec *executionContext) field_Mutation_userCreate_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
@@ -484,21 +545,6 @@ func (ec *executionContext) field_Mutation_userCreate_args(ctx context.Context, 
 		}
 	}
 	args["user"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Mutation_userDelete_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 string
-	if tmp, ok := rawArgs["id"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-		arg0, err = ec.unmarshalNID2string(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["id"] = arg0
 	return args, nil
 }
 
@@ -535,58 +581,19 @@ func (ec *executionContext) field_Query_note_args(ctx context.Context, rawArgs m
 func (ec *executionContext) field_Query_notes_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 *int
+	var arg0 int
 	if tmp, ok := rawArgs["limit"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
-		arg0, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["limit"] = arg0
-	var arg1 *int
-	if tmp, ok := rawArgs["offset"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("offset"))
-		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
-	args["offset"] = arg1
-	return args, nil
-}
-
-func (ec *executionContext) field_Query_user_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 int
-	if tmp, ok := rawArgs["id"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
 		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["id"] = arg0
-	return args, nil
-}
-
-func (ec *executionContext) field_Query_users_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
-	var err error
-	args := map[string]interface{}{}
-	var arg0 *int
-	if tmp, ok := rawArgs["limit"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
-		arg0, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
-		if err != nil {
-			return nil, err
-		}
-	}
 	args["limit"] = arg0
-	var arg1 *int
+	var arg1 int
 	if tmp, ok := rawArgs["offset"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("offset"))
-		arg1, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
+		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -657,8 +664,28 @@ func (ec *executionContext) _Mutation_noteCreate(ctx context.Context, field grap
 	}
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().NoteCreate(rctx, args["note"].(model.NoteInput))
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Mutation().NoteCreate(rctx, args["note"].(model.NoteInput))
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			if ec.directives.IsAuthenticated == nil {
+				return nil, errors.New("directive isAuthenticated is not implemented")
+			}
+			return ec.directives.IsAuthenticated(ctx, nil, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*model.Note); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/ince01/note-server/internal/graph/model.Note`, tmp)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -717,7 +744,7 @@ func (ec *executionContext) _Mutation_userCreate(ctx context.Context, field grap
 	return ec.marshalNUser2ᚖgithubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐUser(ctx, field.Selections, res)
 }
 
-func (ec *executionContext) _Mutation_userDelete(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+func (ec *executionContext) _Mutation_tokenCreate(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
 			ec.Error(ctx, ec.Recover(ctx, r))
@@ -734,7 +761,7 @@ func (ec *executionContext) _Mutation_userDelete(ctx context.Context, field grap
 
 	ctx = graphql.WithFieldContext(ctx, fc)
 	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Mutation_userDelete_args(ctx, rawArgs)
+	args, err := ec.field_Mutation_tokenCreate_args(ctx, rawArgs)
 	if err != nil {
 		ec.Error(ctx, err)
 		return graphql.Null
@@ -742,7 +769,7 @@ func (ec *executionContext) _Mutation_userDelete(ctx context.Context, field grap
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Mutation().UserDelete(rctx, args["id"].(string))
+		return ec.resolvers.Mutation().TokenCreate(rctx, args["userCredential"].(model.UserCredential))
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -754,9 +781,9 @@ func (ec *executionContext) _Mutation_userDelete(ctx context.Context, field grap
 		}
 		return graphql.Null
 	}
-	res := resTmp.(*model.User)
+	res := resTmp.(*model.Token)
 	fc.Result = res
-	return ec.marshalNUser2ᚖgithubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐUser(ctx, field.Selections, res)
+	return ec.marshalNToken2ᚖgithubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐToken(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Note_id(ctx context.Context, field graphql.CollectedField, obj *model.Note) (ret graphql.Marshaler) {
@@ -955,8 +982,28 @@ func (ec *executionContext) _Query_note(ctx context.Context, field graphql.Colle
 	}
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Note(rctx, args["id"].(int))
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Query().Note(rctx, args["id"].(int))
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			if ec.directives.IsAuthenticated == nil {
+				return nil, errors.New("directive isAuthenticated is not implemented")
+			}
+			return ec.directives.IsAuthenticated(ctx, nil, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*model.Note); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/ince01/note-server/internal/graph/model.Note`, tmp)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -994,8 +1041,28 @@ func (ec *executionContext) _Query_notes(ctx context.Context, field graphql.Coll
 	}
 	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Notes(rctx, args["limit"].(*int), args["offset"].(*int))
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Query().Notes(rctx, args["limit"].(int), args["offset"].(int))
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			if ec.directives.IsAuthenticated == nil {
+				return nil, errors.New("directive isAuthenticated is not implemented")
+			}
+			return ec.directives.IsAuthenticated(ctx, nil, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.([]model.Note); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be []github.com/ince01/note-server/internal/graph/model.Note`, tmp)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1028,16 +1095,29 @@ func (ec *executionContext) _Query_user(ctx context.Context, field graphql.Colle
 	}
 
 	ctx = graphql.WithFieldContext(ctx, fc)
-	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Query_user_args(ctx, rawArgs)
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	fc.Args = args
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().User(rctx, args["id"].(int))
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Query().User(rctx)
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			if ec.directives.IsAuthenticated == nil {
+				return nil, errors.New("directive isAuthenticated is not implemented")
+			}
+			return ec.directives.IsAuthenticated(ctx, nil, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*model.User); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/ince01/note-server/internal/graph/model.User`, tmp)
 	})
 	if err != nil {
 		ec.Error(ctx, err)
@@ -1049,48 +1129,6 @@ func (ec *executionContext) _Query_user(ctx context.Context, field graphql.Colle
 	res := resTmp.(*model.User)
 	fc.Result = res
 	return ec.marshalOUser2ᚖgithubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐUser(ctx, field.Selections, res)
-}
-
-func (ec *executionContext) _Query_users(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
-	defer func() {
-		if r := recover(); r != nil {
-			ec.Error(ctx, ec.Recover(ctx, r))
-			ret = graphql.Null
-		}
-	}()
-	fc := &graphql.FieldContext{
-		Object:     "Query",
-		Field:      field,
-		Args:       nil,
-		IsMethod:   true,
-		IsResolver: true,
-	}
-
-	ctx = graphql.WithFieldContext(ctx, fc)
-	rawArgs := field.ArgumentMap(ec.Variables)
-	args, err := ec.field_Query_users_args(ctx, rawArgs)
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	fc.Args = args
-	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
-		ctx = rctx // use context from middleware stack in children
-		return ec.resolvers.Query().Users(rctx, args["limit"].(*int), args["offset"].(*int))
-	})
-	if err != nil {
-		ec.Error(ctx, err)
-		return graphql.Null
-	}
-	if resTmp == nil {
-		if !graphql.HasFieldError(ctx, fc) {
-			ec.Errorf(ctx, "must not be null")
-		}
-		return graphql.Null
-	}
-	res := resTmp.([]model.User)
-	fc.Result = res
-	return ec.marshalNUser2ᚕgithubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐUserᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Query___type(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
@@ -1162,6 +1200,143 @@ func (ec *executionContext) _Query___schema(ctx context.Context, field graphql.C
 	res := resTmp.(*introspection.Schema)
 	fc.Result = res
 	return ec.marshalO__Schema2ᚖgithubᚗcomᚋ99designsᚋgqlgenᚋgraphqlᚋintrospectionᚐSchema(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Token_tokenType(ctx context.Context, field graphql.CollectedField, obj *model.Token) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Token",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.TokenType, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(model.TokenType)
+	fc.Result = res
+	return ec.marshalNTokenType2githubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐTokenType(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Token_accessToken(ctx context.Context, field graphql.CollectedField, obj *model.Token) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Token",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.AccessToken, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Token_expiresIn(ctx context.Context, field graphql.CollectedField, obj *model.Token) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Token",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.ExpiresIn, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(time.Time)
+	fc.Result = res
+	return ec.marshalNTimestamp2timeᚐTime(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Token_refreshToken(ctx context.Context, field graphql.CollectedField, obj *model.Token) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Token",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.RefreshToken, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOString2ᚖstring(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _User_id(ctx context.Context, field graphql.CollectedField, obj *model.User) (ret graphql.Marshaler) {
@@ -2561,6 +2736,50 @@ func (ec *executionContext) unmarshalInputNoteInput(ctx context.Context, obj int
 	return it, nil
 }
 
+func (ec *executionContext) unmarshalInputUserCredential(ctx context.Context, obj interface{}) (model.UserCredential, error) {
+	var it model.UserCredential
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "grantType":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("grantType"))
+			it.GrantType, err = ec.unmarshalNGrantType2githubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐGrantType(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "userName":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("userName"))
+			it.UserName, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "password":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("password"))
+			it.Password, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "scope":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("scope"))
+			it.Scope, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
 func (ec *executionContext) unmarshalInputUserInput(ctx context.Context, obj interface{}) (model.UserInput, error) {
 	var it model.UserInput
 	var asMap = obj.(map[string]interface{})
@@ -2662,8 +2881,8 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
-		case "userDelete":
-			out.Values[i] = ec._Mutation_userDelete(ctx, field)
+		case "tokenCreate":
+			out.Values[i] = ec._Mutation_tokenCreate(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
@@ -2782,24 +3001,49 @@ func (ec *executionContext) _Query(ctx context.Context, sel ast.SelectionSet) gr
 				res = ec._Query_user(ctx, field)
 				return res
 			})
-		case "users":
-			field := field
-			out.Concurrently(i, func() (res graphql.Marshaler) {
-				defer func() {
-					if r := recover(); r != nil {
-						ec.Error(ctx, ec.Recover(ctx, r))
-					}
-				}()
-				res = ec._Query_users(ctx, field)
-				if res == graphql.Null {
-					atomic.AddUint32(&invalids, 1)
-				}
-				return res
-			})
 		case "__type":
 			out.Values[i] = ec._Query___type(ctx, field)
 		case "__schema":
 			out.Values[i] = ec._Query___schema(ctx, field)
+		default:
+			panic("unknown field " + strconv.Quote(field.Name))
+		}
+	}
+	out.Dispatch()
+	if invalids > 0 {
+		return graphql.Null
+	}
+	return out
+}
+
+var tokenImplementors = []string{"Token"}
+
+func (ec *executionContext) _Token(ctx context.Context, sel ast.SelectionSet, obj *model.Token) graphql.Marshaler {
+	fields := graphql.CollectFields(ec.OperationContext, sel, tokenImplementors)
+
+	out := graphql.NewFieldSet(fields)
+	var invalids uint32
+	for i, field := range fields {
+		switch field.Name {
+		case "__typename":
+			out.Values[i] = graphql.MarshalString("Token")
+		case "tokenType":
+			out.Values[i] = ec._Token_tokenType(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "accessToken":
+			out.Values[i] = ec._Token_accessToken(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "expiresIn":
+			out.Values[i] = ec._Token_expiresIn(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "refreshToken":
+			out.Values[i] = ec._Token_refreshToken(ctx, field, obj)
 		default:
 			panic("unknown field " + strconv.Quote(field.Name))
 		}
@@ -3137,6 +3381,16 @@ func (ec *executionContext) marshalNGender2githubᚗcomᚋince01ᚋnoteᚑserver
 	return v
 }
 
+func (ec *executionContext) unmarshalNGrantType2githubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐGrantType(ctx context.Context, v interface{}) (model.GrantType, error) {
+	var res model.GrantType
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNGrantType2githubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐGrantType(ctx context.Context, sel ast.SelectionSet, v model.GrantType) graphql.Marshaler {
+	return v
+}
+
 func (ec *executionContext) unmarshalNID2string(ctx context.Context, v interface{}) (string, error) {
 	res, err := graphql.UnmarshalID(v)
 	return res, graphql.ErrorOnPath(ctx, err)
@@ -3253,45 +3507,47 @@ func (ec *executionContext) marshalNTime2timeᚐTime(ctx context.Context, sel as
 	return res
 }
 
-func (ec *executionContext) marshalNUser2githubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐUser(ctx context.Context, sel ast.SelectionSet, v model.User) graphql.Marshaler {
-	return ec._User(ctx, sel, &v)
+func (ec *executionContext) unmarshalNTimestamp2timeᚐTime(ctx context.Context, v interface{}) (time.Time, error) {
+	res, err := model.UnmarshalTimestamp(v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
-func (ec *executionContext) marshalNUser2ᚕgithubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐUserᚄ(ctx context.Context, sel ast.SelectionSet, v []model.User) graphql.Marshaler {
-	ret := make(graphql.Array, len(v))
-	var wg sync.WaitGroup
-	isLen1 := len(v) == 1
-	if !isLen1 {
-		wg.Add(len(v))
+func (ec *executionContext) marshalNTimestamp2timeᚐTime(ctx context.Context, sel ast.SelectionSet, v time.Time) graphql.Marshaler {
+	res := model.MarshalTimestamp(v)
+	if res == graphql.Null {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
 	}
-	for i := range v {
-		i := i
-		fc := &graphql.FieldContext{
-			Index:  &i,
-			Result: &v[i],
-		}
-		ctx := graphql.WithFieldContext(ctx, fc)
-		f := func(i int) {
-			defer func() {
-				if r := recover(); r != nil {
-					ec.Error(ctx, ec.Recover(ctx, r))
-					ret = nil
-				}
-			}()
-			if !isLen1 {
-				defer wg.Done()
-			}
-			ret[i] = ec.marshalNUser2githubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐUser(ctx, sel, v[i])
-		}
-		if isLen1 {
-			f(i)
-		} else {
-			go f(i)
-		}
+	return res
+}
 
+func (ec *executionContext) marshalNToken2githubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐToken(ctx context.Context, sel ast.SelectionSet, v model.Token) graphql.Marshaler {
+	return ec._Token(ctx, sel, &v)
+}
+
+func (ec *executionContext) marshalNToken2ᚖgithubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐToken(ctx context.Context, sel ast.SelectionSet, v *model.Token) graphql.Marshaler {
+	if v == nil {
+		if !graphql.HasFieldError(ctx, graphql.GetFieldContext(ctx)) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
 	}
-	wg.Wait()
-	return ret
+	return ec._Token(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNTokenType2githubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐTokenType(ctx context.Context, v interface{}) (model.TokenType, error) {
+	var res model.TokenType
+	err := res.UnmarshalGQL(v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalNTokenType2githubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐTokenType(ctx context.Context, sel ast.SelectionSet, v model.TokenType) graphql.Marshaler {
+	return v
+}
+
+func (ec *executionContext) marshalNUser2githubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐUser(ctx context.Context, sel ast.SelectionSet, v model.User) graphql.Marshaler {
+	return ec._User(ctx, sel, &v)
 }
 
 func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐUser(ctx context.Context, sel ast.SelectionSet, v *model.User) graphql.Marshaler {
@@ -3302,6 +3558,11 @@ func (ec *executionContext) marshalNUser2ᚖgithubᚗcomᚋince01ᚋnoteᚑserve
 		return graphql.Null
 	}
 	return ec._User(ctx, sel, v)
+}
+
+func (ec *executionContext) unmarshalNUserCredential2githubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐUserCredential(ctx context.Context, v interface{}) (model.UserCredential, error) {
+	res, err := ec.unmarshalInputUserCredential(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
 }
 
 func (ec *executionContext) unmarshalNUserInput2githubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐUserInput(ctx context.Context, v interface{}) (model.UserInput, error) {
@@ -3560,21 +3821,6 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 		return graphql.Null
 	}
 	return graphql.MarshalBoolean(*v)
-}
-
-func (ec *executionContext) unmarshalOInt2ᚖint(ctx context.Context, v interface{}) (*int, error) {
-	if v == nil {
-		return nil, nil
-	}
-	res, err := graphql.UnmarshalInt(v)
-	return &res, graphql.ErrorOnPath(ctx, err)
-}
-
-func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.SelectionSet, v *int) graphql.Marshaler {
-	if v == nil {
-		return graphql.Null
-	}
-	return graphql.MarshalInt(*v)
 }
 
 func (ec *executionContext) marshalONote2ᚖgithubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐNote(ctx context.Context, sel ast.SelectionSet, v *model.Note) graphql.Marshaler {

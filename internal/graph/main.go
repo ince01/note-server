@@ -6,6 +6,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"gorm.io/gorm"
 
+	"github.com/ince01/note-server/internal/graph/directives"
 	"github.com/ince01/note-server/internal/graph/generated"
 	"github.com/ince01/note-server/internal/graph/resolvers"
 )
@@ -18,7 +19,9 @@ func Handler(db *gorm.DB) gin.HandlerFunc {
 		Resolvers: &resolvers.Resolver{
 			DB: db,
 		},
-		Directives: generated.DirectiveRoot{},
+		Directives: generated.DirectiveRoot{
+			IsAuthenticated: directives.IsAuthenticated,
+		},
 	}))
 
 	return func(c *gin.Context) {

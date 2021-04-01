@@ -1,0 +1,26 @@
+type Token
+  @goModel(model: "github.com/ince01/note-server/internal/graph/model.Token") {
+  tokenType: TokenType!
+  accessToken: String!
+  expiresIn: Timestamp!
+  refreshToken: String
+}
+
+input UserCredential
+  @goModel(
+    model: "github.com/ince01/note-server/internal/graph/model.UserCredential"
+  ) {
+  grantType: GrantType!
+  userName: String!
+  password: String!
+  scope: String
+}
+
+enum TokenType {
+  BEARER
+}
+
+enum GrantType {
+  AUTHORIZATION_CODE
+  PASSWORD
+}

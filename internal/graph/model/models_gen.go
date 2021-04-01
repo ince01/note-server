@@ -50,3 +50,83 @@ func (e *Gender) UnmarshalGQL(v interface{}) error {
 func (e Gender) MarshalGQL(w io.Writer) {
 	fmt.Fprint(w, strconv.Quote(e.String()))
 }
+
+type GrantType string
+
+const (
+	GrantTypeAuthorizationCode GrantType = "AUTHORIZATION_CODE"
+	GrantTypePassword          GrantType = "PASSWORD"
+)
+
+var AllGrantType = []GrantType{
+	GrantTypeAuthorizationCode,
+	GrantTypePassword,
+}
+
+func (e GrantType) IsValid() bool {
+	switch e {
+	case GrantTypeAuthorizationCode, GrantTypePassword:
+		return true
+	}
+	return false
+}
+
+func (e GrantType) String() string {
+	return string(e)
+}
+
+func (e *GrantType) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = GrantType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid GrantType", str)
+	}
+	return nil
+}
+
+func (e GrantType) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}
+
+type TokenType string
+
+const (
+	TokenTypeBearer TokenType = "BEARER"
+)
+
+var AllTokenType = []TokenType{
+	TokenTypeBearer,
+}
+
+func (e TokenType) IsValid() bool {
+	switch e {
+	case TokenTypeBearer:
+		return true
+	}
+	return false
+}
+
+func (e TokenType) String() string {
+	return string(e)
+}
+
+func (e *TokenType) UnmarshalGQL(v interface{}) error {
+	str, ok := v.(string)
+	if !ok {
+		return fmt.Errorf("enums must be strings")
+	}
+
+	*e = TokenType(str)
+	if !e.IsValid() {
+		return fmt.Errorf("%s is not a valid TokenType", str)
+	}
+	return nil
+}
+
+func (e TokenType) MarshalGQL(w io.Writer) {
+	fmt.Fprint(w, strconv.Quote(e.String()))
+}

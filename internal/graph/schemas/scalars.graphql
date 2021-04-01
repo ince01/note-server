@@ -17,3 +17,5 @@ scalar Any
 # 	Size     int64
 # }
 scalar Upload
+
+scalar Timestamp
