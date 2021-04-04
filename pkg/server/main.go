@@ -7,6 +7,7 @@ import (
 	"github.com/gin-gonic/gin"
 	"github.com/ince01/note-server/internal/auth"
 	"github.com/ince01/note-server/internal/graph"
+	cors "github.com/rs/cors/wrapper/gin"
 	"gorm.io/gorm"
 )
 
@@ -24,6 +25,8 @@ func Run(db *gorm.DB) {
 	router.Use(gin.Logger())
 
 	router.Use(gin.Recovery())
+
+	router.Use(cors.AllowAll())
 
 	router.Use(auth.Middleware(db))
 

@@ -84,7 +84,7 @@ func (r *mutationResolver) TokenCreate(ctx context.Context, userCredential model
 	tx := r.DB.Where("email = ?", userCredential.UserName).First(&user)
 
 	if tx.Error != nil {
-		return nil, tx.Error
+		return nil, fmt.Errorf("invaild email or password")
 	}
 
 	isMatchedPassword := user.ComparePassword(userCredential.Password)
