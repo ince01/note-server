@@ -34,7 +34,7 @@ func (r *queryResolver) Note(ctx context.Context, id int) (*model.Note, error) {
 func (r *queryResolver) Notes(ctx context.Context, limit int, offset int) ([]model.Note, error) {
 	var notes []models.Note
 
-	r.DB.Limit(limit).Offset(offset).Find(&notes)
+	r.DB.Limit(limit).Offset(offset).Order("id desc").Find(&notes)
 
 	var result []model.Note
 
