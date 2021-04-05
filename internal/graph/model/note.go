@@ -11,7 +11,8 @@ type Note struct {
 }
 
 type NoteInput struct {
-	Title     string `json:"title"`
-	Content   string `json:"content"`
-	CreatedBy string `json:"createdBy"`
+	ID        *string `json:"id"`
+	Title     string  `json:"title"`
+	Content   string  `json:"content"`
+	CreatedBy string  `json:"createdBy"`
 }

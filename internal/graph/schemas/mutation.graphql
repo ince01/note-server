@@ -1,5 +1,6 @@
 type Mutation {
   noteCreate(note: NoteInput!): Note! @isAuthenticated
+  noteUpdate(note: NoteInput!): Note! @isAuthenticated
 
   userCreate(user: UserInput!): User!
 

@@ -18,7 +18,7 @@ func (r *mutationResolver) NoteCreate(ctx context.Context, note model.NoteInput)
 	tx := r.DB.First(&model.User{ID: note.CreatedBy})
 
 	if tx.Error != nil {
-		return nil, tx.Error
+		return nil, fmt.Errorf("user not found")
 	}
 
 	u64, _ := strconv.ParseUint(note.CreatedBy, 10, 64)
@@ -40,6 +40,32 @@ func (r *mutationResolver) NoteCreate(ctx context.Context, note model.NoteInput)
 		Title:     newNote.Title,
 		Content:   newNote.Content,
 		CreatedBy: note.CreatedBy,
+	}, nil
+}
+
+func (r *mutationResolver) NoteUpdate(ctx context.Context, note model.NoteInput) (*model.Note, error) {
+	updatedNote := models.Note{}
+
+	tx := r.DB.First(&updatedNote, note.ID)
+
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	updatedNote.Title = note.Title
+	updatedNote.Content = note.Content
+
+	tx = r.DB.Save(&updatedNote)
+
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
+
+	return &model.Note{
+		ID:        fmt.Sprint(updatedNote.ID),
+		Title:     updatedNote.Title,
+		Content:   updatedNote.Content,
+		CreatedBy: fmt.Sprint(updatedNote.CreatedBy),
 	}, nil
 }
 

@@ -11,6 +11,7 @@ input NoteInput
   @goModel(
     model: "github.com/ince01/note-server/internal/graph/model.NoteInput"
   ) {
+  id: String
   title: String!
   content: String!
   createdBy: ID!

@@ -49,6 +49,7 @@ type DirectiveRoot struct {
 type ComplexityRoot struct {
 	Mutation struct {
 		NoteCreate  func(childComplexity int, note model.NoteInput) int
+		NoteUpdate  func(childComplexity int, note model.NoteInput) int
 		TokenCreate func(childComplexity int, userCredential model.UserCredential) int
 		UserCreate  func(childComplexity int, user model.UserInput) int
 	}
@@ -88,6 +89,7 @@ type ComplexityRoot struct {
 
 type MutationResolver interface {
 	NoteCreate(ctx context.Context, note model.NoteInput) (*model.Note, error)
+	NoteUpdate(ctx context.Context, note model.NoteInput) (*model.Note, error)
 	UserCreate(ctx context.Context, user model.UserInput) (*model.User, error)
 	TokenCreate(ctx context.Context, userCredential model.UserCredential) (*model.Token, error)
 }
@@ -126,6 +128,18 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Mutation.NoteCreate(childComplexity, args["note"].(model.NoteInput)), true
+
+	case "Mutation.noteUpdate":
+		if e.complexity.Mutation.NoteUpdate == nil {
+			break
+		}
+
+		args, err := ec.field_Mutation_noteUpdate_args(context.TODO(), rawArgs)
+		if err != nil {
+			return 0, false
+		}
+
+		return e.complexity.Mutation.NoteUpdate(childComplexity, args["note"].(model.NoteInput)), true
 
 	case "Mutation.tokenCreate":
 		if e.complexity.Mutation.TokenCreate == nil {
@@ -382,6 +396,7 @@ directive @isAuthenticated on FIELD_DEFINITION
 `, BuiltIn: false},
 	{Name: "internal/graph/schemas/mutation.graphql", Input: `type Mutation {
   noteCreate(note: NoteInput!): Note! @isAuthenticated
+  noteUpdate(note: NoteInput!): Note! @isAuthenticated
 
   userCreate(user: UserInput!): User!
 
@@ -439,6 +454,7 @@ input NoteInput
   @goModel(
     model: "github.com/ince01/note-server/internal/graph/model.NoteInput"
   ) {
+  id: String
   title: String!
   content: String!
   createdBy: ID!
@@ -504,6 +520,21 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 // region    ***************************** args.gotpl *****************************
 
 func (ec *executionContext) field_Mutation_noteCreate_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
+	var err error
+	args := map[string]interface{}{}
+	var arg0 model.NoteInput
+	if tmp, ok := rawArgs["note"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("note"))
+		arg0, err = ec.unmarshalNNoteInput2githubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐNoteInput(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["note"] = arg0
+	return args, nil
+}
+
+func (ec *executionContext) field_Mutation_noteUpdate_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
 	var arg0 model.NoteInput
@@ -667,6 +698,68 @@ func (ec *executionContext) _Mutation_noteCreate(ctx context.Context, field grap
 		directive0 := func(rctx context.Context) (interface{}, error) {
 			ctx = rctx // use context from middleware stack in children
 			return ec.resolvers.Mutation().NoteCreate(rctx, args["note"].(model.NoteInput))
+		}
+		directive1 := func(ctx context.Context) (interface{}, error) {
+			if ec.directives.IsAuthenticated == nil {
+				return nil, errors.New("directive isAuthenticated is not implemented")
+			}
+			return ec.directives.IsAuthenticated(ctx, nil, directive0)
+		}
+
+		tmp, err := directive1(rctx)
+		if err != nil {
+			return nil, graphql.ErrorOnPath(ctx, err)
+		}
+		if tmp == nil {
+			return nil, nil
+		}
+		if data, ok := tmp.(*model.Note); ok {
+			return data, nil
+		}
+		return nil, fmt.Errorf(`unexpected type %T from directive, should be *github.com/ince01/note-server/internal/graph/model.Note`, tmp)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(*model.Note)
+	fc.Result = res
+	return ec.marshalNNote2ᚖgithubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐNote(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Mutation_noteUpdate(ctx context.Context, field graphql.CollectedField) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Mutation",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	rawArgs := field.ArgumentMap(ec.Variables)
+	args, err := ec.field_Mutation_noteUpdate_args(ctx, rawArgs)
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	fc.Args = args
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		directive0 := func(rctx context.Context) (interface{}, error) {
+			ctx = rctx // use context from middleware stack in children
+			return ec.resolvers.Mutation().NoteUpdate(rctx, args["note"].(model.NoteInput))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
 			if ec.directives.IsAuthenticated == nil {
@@ -2706,6 +2799,14 @@ func (ec *executionContext) unmarshalInputNoteInput(ctx context.Context, obj int
 
 	for k, v := range asMap {
 		switch k {
+		case "id":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			it.ID, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		case "title":
 			var err error
 
@@ -2873,6 +2974,11 @@ func (ec *executionContext) _Mutation(ctx context.Context, sel ast.SelectionSet)
 			out.Values[i] = graphql.MarshalString("Mutation")
 		case "noteCreate":
 			out.Values[i] = ec._Mutation_noteCreate(ctx, field)
+			if out.Values[i] == graphql.Null {
+				invalids++
+			}
+		case "noteUpdate":
+			out.Values[i] = ec._Mutation_noteUpdate(ctx, field)
 			if out.Values[i] == graphql.Null {
 				invalids++
 			}
