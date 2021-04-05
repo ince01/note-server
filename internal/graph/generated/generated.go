@@ -457,7 +457,7 @@ input NoteInput
   id: String
   title: String!
   content: String!
-  createdBy: ID!
+  createdBy: ID
 }
 `, BuiltIn: false},
 	{Name: "internal/graph/schemas/types/token.graphql", Input: `type Token
@@ -2827,7 +2827,7 @@ func (ec *executionContext) unmarshalInputNoteInput(ctx context.Context, obj int
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdBy"))
-			it.CreatedBy, err = ec.unmarshalNID2string(ctx, v)
+			it.CreatedBy, err = ec.unmarshalOID2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -3927,6 +3927,21 @@ func (ec *executionContext) marshalOBoolean2ᚖbool(ctx context.Context, sel ast
 		return graphql.Null
 	}
 	return graphql.MarshalBoolean(*v)
+}
+
+func (ec *executionContext) unmarshalOID2ᚖstring(ctx context.Context, v interface{}) (*string, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalID(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOID2ᚖstring(ctx context.Context, sel ast.SelectionSet, v *string) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return graphql.MarshalID(*v)
 }
 
 func (ec *executionContext) marshalONote2ᚖgithubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐNote(ctx context.Context, sel ast.SelectionSet, v *model.Note) graphql.Marshaler {

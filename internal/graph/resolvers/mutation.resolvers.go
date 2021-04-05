@@ -15,18 +15,20 @@ import (
 )
 
 func (r *mutationResolver) NoteCreate(ctx context.Context, note model.NoteInput) (*model.Note, error) {
-	tx := r.DB.First(&model.User{ID: note.CreatedBy})
+	tx := r.DB.First(&model.User{ID: *note.CreatedBy})
 
 	if tx.Error != nil {
 		return nil, fmt.Errorf("user not found")
 	}
 
-	u64, _ := strconv.ParseUint(note.CreatedBy, 10, 64)
+	u64, _ := strconv.ParseUint(*note.CreatedBy, 10, 64)
+
+	createdBy := uint(u64)
 
 	newNote := &models.Note{
 		Title:     note.Title,
 		Content:   note.Content,
-		CreatedBy: uint(u64),
+		CreatedBy: &createdBy,
 	}
 
 	result := r.DB.Create(newNote)
@@ -39,7 +41,7 @@ func (r *mutationResolver) NoteCreate(ctx context.Context, note model.NoteInput)
 		ID:        fmt.Sprint(newNote.ID),
 		Title:     newNote.Title,
 		Content:   newNote.Content,
-		CreatedBy: note.CreatedBy,
+		CreatedBy: *note.CreatedBy,
 	}, nil
 }
 

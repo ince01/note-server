@@ -14,5 +14,5 @@ input NoteInput
   id: String
   title: String!
   content: String!
-  createdBy: ID!
+  createdBy: ID
 }

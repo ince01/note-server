@@ -14,5 +14,5 @@ type NoteInput struct {
 	ID        *string `json:"id"`
 	Title     string  `json:"title"`
 	Content   string  `json:"content"`
-	CreatedBy string  `json:"createdBy"`
+	CreatedBy *string `json:"createdBy"`
 }

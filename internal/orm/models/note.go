@@ -7,5 +7,5 @@ type Note struct {
 	Title     string
 	Content   string
 	Done      bool
-	CreatedBy uint
+	CreatedBy *uint
 }
