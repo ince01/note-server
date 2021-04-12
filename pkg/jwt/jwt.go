@@ -20,7 +20,7 @@ func GenerateToken(userId string) (*AccessToken, error) {
 
 	claims["userId"] = userId
 
-	exp := time.Now().Add(time.Hour * 24).Unix()
+	exp := time.Now().Add(time.Hour * 24 * 7).Unix()
 	claims["exp"] = exp
 
 	tokenString, err := token.SignedString(SecretKey)

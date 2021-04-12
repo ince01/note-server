@@ -2,8 +2,11 @@ type Note
   @goModel(model: "github.com/ince01/note-server/internal/graph/model.Note") {
   id: ID!
   title: String!
+  icon: String!
   content: String!
-  createdBy: User @goField(forceResolver: true)
+  parent: ID
+  children: Note @goField(forceResolver: true)
+  createdBy: User! @goField(forceResolver: true)
   createdAt: Time!
 }
 
@@ -11,8 +14,9 @@ input NoteInput
   @goModel(
     model: "github.com/ince01/note-server/internal/graph/model.NoteInput"
   ) {
-  id: String
+  id: ID
   title: String!
+  icon: String!
   content: String!
-  createdBy: ID
+  parent: ID
 }

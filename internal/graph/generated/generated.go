@@ -55,10 +55,13 @@ type ComplexityRoot struct {
 	}
 
 	Note struct {
+		Children  func(childComplexity int) int
 		Content   func(childComplexity int) int
 		CreatedAt func(childComplexity int) int
 		CreatedBy func(childComplexity int) int
 		ID        func(childComplexity int) int
+		Icon      func(childComplexity int) int
+		Parent    func(childComplexity int) int
 		Title     func(childComplexity int) int
 	}
 
@@ -94,6 +97,7 @@ type MutationResolver interface {
 	TokenCreate(ctx context.Context, userCredential model.UserCredential) (*model.Token, error)
 }
 type NoteResolver interface {
+	Children(ctx context.Context, obj *model.Note) (*model.Note, error)
 	CreatedBy(ctx context.Context, obj *model.Note) (*model.User, error)
 }
 type QueryResolver interface {
@@ -165,6 +169,13 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 
 		return e.complexity.Mutation.UserCreate(childComplexity, args["user"].(model.UserInput)), true
 
+	case "Note.children":
+		if e.complexity.Note.Children == nil {
+			break
+		}
+
+		return e.complexity.Note.Children(childComplexity), true
+
 	case "Note.content":
 		if e.complexity.Note.Content == nil {
 			break
@@ -192,6 +203,20 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 		}
 
 		return e.complexity.Note.ID(childComplexity), true
+
+	case "Note.icon":
+		if e.complexity.Note.Icon == nil {
+			break
+		}
+
+		return e.complexity.Note.Icon(childComplexity), true
+
+	case "Note.parent":
+		if e.complexity.Note.Parent == nil {
+			break
+		}
+
+		return e.complexity.Note.Parent(childComplexity), true
 
 	case "Note.title":
 		if e.complexity.Note.Title == nil {
@@ -445,8 +470,11 @@ enum Gender {
   @goModel(model: "github.com/ince01/note-server/internal/graph/model.Note") {
   id: ID!
   title: String!
+  icon: String!
   content: String!
-  createdBy: User @goField(forceResolver: true)
+  parent: ID
+  children: Note @goField(forceResolver: true)
+  createdBy: User! @goField(forceResolver: true)
   createdAt: Time!
 }
 
@@ -454,10 +482,11 @@ input NoteInput
   @goModel(
     model: "github.com/ince01/note-server/internal/graph/model.NoteInput"
   ) {
-  id: String
+  id: ID
   title: String!
+  icon: String!
   content: String!
-  createdBy: ID
+  parent: ID
 }
 `, BuiltIn: false},
 	{Name: "internal/graph/schemas/types/token.graphql", Input: `type Token
@@ -949,6 +978,41 @@ func (ec *executionContext) _Note_title(ctx context.Context, field graphql.Colle
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Note_icon(ctx context.Context, field graphql.CollectedField, obj *model.Note) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Note",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Icon, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
+		return graphql.Null
+	}
+	res := resTmp.(string)
+	fc.Result = res
+	return ec.marshalNString2string(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Note_content(ctx context.Context, field graphql.CollectedField, obj *model.Note) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -984,6 +1048,70 @@ func (ec *executionContext) _Note_content(ctx context.Context, field graphql.Col
 	return ec.marshalNString2string(ctx, field.Selections, res)
 }
 
+func (ec *executionContext) _Note_parent(ctx context.Context, field graphql.CollectedField, obj *model.Note) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Note",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   false,
+		IsResolver: false,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return obj.Parent, nil
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*string)
+	fc.Result = res
+	return ec.marshalOID2ᚖstring(ctx, field.Selections, res)
+}
+
+func (ec *executionContext) _Note_children(ctx context.Context, field graphql.CollectedField, obj *model.Note) (ret graphql.Marshaler) {
+	defer func() {
+		if r := recover(); r != nil {
+			ec.Error(ctx, ec.Recover(ctx, r))
+			ret = graphql.Null
+		}
+	}()
+	fc := &graphql.FieldContext{
+		Object:     "Note",
+		Field:      field,
+		Args:       nil,
+		IsMethod:   true,
+		IsResolver: true,
+	}
+
+	ctx = graphql.WithFieldContext(ctx, fc)
+	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
+		ctx = rctx // use context from middleware stack in children
+		return ec.resolvers.Note().Children(rctx, obj)
+	})
+	if err != nil {
+		ec.Error(ctx, err)
+		return graphql.Null
+	}
+	if resTmp == nil {
+		return graphql.Null
+	}
+	res := resTmp.(*model.Note)
+	fc.Result = res
+	return ec.marshalONote2ᚖgithubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐNote(ctx, field.Selections, res)
+}
+
 func (ec *executionContext) _Note_createdBy(ctx context.Context, field graphql.CollectedField, obj *model.Note) (ret graphql.Marshaler) {
 	defer func() {
 		if r := recover(); r != nil {
@@ -1009,11 +1137,14 @@ func (ec *executionContext) _Note_createdBy(ctx context.Context, field graphql.C
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
 	res := resTmp.(*model.User)
 	fc.Result = res
-	return ec.marshalOUser2ᚖgithubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐUser(ctx, field.Selections, res)
+	return ec.marshalNUser2ᚖgithubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐUser(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Note_createdAt(ctx context.Context, field graphql.CollectedField, obj *model.Note) (ret graphql.Marshaler) {
@@ -2803,7 +2934,7 @@ func (ec *executionContext) unmarshalInputNoteInput(ctx context.Context, obj int
 			var err error
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-			it.ID, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			it.ID, err = ec.unmarshalOID2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -2815,6 +2946,14 @@ func (ec *executionContext) unmarshalInputNoteInput(ctx context.Context, obj int
 			if err != nil {
 				return it, err
 			}
+		case "icon":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("icon"))
+			it.Icon, err = ec.unmarshalNString2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
 		case "content":
 			var err error
 
@@ -2823,11 +2962,11 @@ func (ec *executionContext) unmarshalInputNoteInput(ctx context.Context, obj int
 			if err != nil {
 				return it, err
 			}
-		case "createdBy":
+		case "parent":
 			var err error
 
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("createdBy"))
-			it.CreatedBy, err = ec.unmarshalOID2ᚖstring(ctx, v)
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("parent"))
+			it.Parent, err = ec.unmarshalOID2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -3024,11 +3163,29 @@ func (ec *executionContext) _Note(ctx context.Context, sel ast.SelectionSet, obj
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "icon":
+			out.Values[i] = ec._Note_icon(ctx, field, obj)
+			if out.Values[i] == graphql.Null {
+				atomic.AddUint32(&invalids, 1)
+			}
 		case "content":
 			out.Values[i] = ec._Note_content(ctx, field, obj)
 			if out.Values[i] == graphql.Null {
 				atomic.AddUint32(&invalids, 1)
 			}
+		case "parent":
+			out.Values[i] = ec._Note_parent(ctx, field, obj)
+		case "children":
+			field := field
+			out.Concurrently(i, func() (res graphql.Marshaler) {
+				defer func() {
+					if r := recover(); r != nil {
+						ec.Error(ctx, ec.Recover(ctx, r))
+					}
+				}()
+				res = ec._Note_children(ctx, field, obj)
+				return res
+			})
 		case "createdBy":
 			field := field
 			out.Concurrently(i, func() (res graphql.Marshaler) {
@@ -3038,6 +3195,9 @@ func (ec *executionContext) _Note(ctx context.Context, sel ast.SelectionSet, obj
 					}
 				}()
 				res = ec._Note_createdBy(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		case "createdAt":

@@ -12,13 +12,17 @@ import (
 	"github.com/ince01/note-server/internal/orm/models"
 )
 
+func (r *noteResolver) Children(ctx context.Context, obj *model.Note) (*model.Note, error) {
+	return obj, nil
+}
+
 func (r *noteResolver) CreatedBy(ctx context.Context, obj *model.Note) (*model.User, error) {
 	var user models.User
 
 	tx := r.DB.First(&user, obj.CreatedBy)
 
-	if tx.RowsAffected < 1 {
-		return nil, nil
+	if tx.Error != nil {
+		return nil, fmt.Errorf("user not found")
 	}
 
 	return &model.User{

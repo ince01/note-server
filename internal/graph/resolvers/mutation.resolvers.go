@@ -6,33 +6,38 @@ package resolvers
 import (
 	"context"
 	"fmt"
-	"strconv"
 
+	"github.com/ince01/note-server/internal/auth"
 	"github.com/ince01/note-server/internal/graph/generated"
 	"github.com/ince01/note-server/internal/graph/model"
 	"github.com/ince01/note-server/internal/orm/models"
+	"github.com/ince01/note-server/pkg/helpers"
 	"github.com/ince01/note-server/pkg/jwt"
 )
 
 func (r *mutationResolver) NoteCreate(ctx context.Context, note model.NoteInput) (*model.Note, error) {
-	tx := r.DB.First(&model.User{ID: *note.CreatedBy})
+	currentUser, _ := auth.ForContext(ctx)
 
-	if tx.Error != nil {
-		return nil, fmt.Errorf("user not found")
+	if note.Parent != nil {
+		parentNote := &models.Note{}
+		tx := r.DB.First(parentNote, *note.Parent)
+		if tx.Error != nil {
+			return nil, fmt.Errorf("parent note not found")
+		}
 	}
 
-	u64, _ := strconv.ParseUint(*note.CreatedBy, 10, 64)
-
-	createdBy := uint(u64)
+	parent := helpers.String2Uint(note.Parent)
+	createdBy := helpers.String2Uint(&currentUser.ID)
 
 	newNote := &models.Note{
 		Title:     note.Title,
 		Content:   note.Content,
-		CreatedBy: &createdBy,
+		Icon:      note.Icon,
+		Parent:    parent,
+		CreatedBy: *createdBy,
 	}
 
 	result := r.DB.Create(newNote)
-
 	if result.Error != nil {
 		return nil, result.Error
 	}
@@ -41,7 +46,8 @@ func (r *mutationResolver) NoteCreate(ctx context.Context, note model.NoteInput)
 		ID:        fmt.Sprint(newNote.ID),
 		Title:     newNote.Title,
 		Content:   newNote.Content,
-		CreatedBy: *note.CreatedBy,
+		Parent:    note.Parent,
+		CreatedBy: currentUser.ID,
 	}, nil
 }
 
@@ -49,7 +55,6 @@ func (r *mutationResolver) NoteUpdate(ctx context.Context, note model.NoteInput)
 	updatedNote := models.Note{}
 
 	tx := r.DB.First(&updatedNote, note.ID)
-
 	if tx.Error != nil {
 		return nil, tx.Error
 	}
@@ -58,7 +63,6 @@ func (r *mutationResolver) NoteUpdate(ctx context.Context, note model.NoteInput)
 	updatedNote.Content = note.Content
 
 	tx = r.DB.Save(&updatedNote)
-
 	if tx.Error != nil {
 		return nil, tx.Error
 	}
@@ -66,6 +70,7 @@ func (r *mutationResolver) NoteUpdate(ctx context.Context, note model.NoteInput)
 	return &model.Note{
 		ID:        fmt.Sprint(updatedNote.ID),
 		Title:     updatedNote.Title,
+		Icon:      updatedNote.Icon,
 		Content:   updatedNote.Content,
 		CreatedBy: fmt.Sprint(updatedNote.CreatedBy),
 	}, nil

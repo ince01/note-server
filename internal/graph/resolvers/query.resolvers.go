@@ -11,12 +11,19 @@ import (
 	"github.com/ince01/note-server/internal/graph/generated"
 	"github.com/ince01/note-server/internal/graph/model"
 	"github.com/ince01/note-server/internal/orm/models"
+	"github.com/ince01/note-server/pkg/helpers"
 )
 
 func (r *queryResolver) Note(ctx context.Context, id int) (*model.Note, error) {
+	currentUser, _ := auth.ForContext(ctx)
+
 	note := models.Note{}
 
-	tx := r.DB.First(&note, fmt.Sprint(id))
+	tx := r.DB.
+		Where(&models.Note{
+			CreatedBy: *(helpers.String2Uint(&currentUser.ID)),
+		}).
+		First(&note, fmt.Sprint(id))
 
 	if tx.Error != nil {
 		return nil, tx.Error
@@ -25,16 +32,27 @@ func (r *queryResolver) Note(ctx context.Context, id int) (*model.Note, error) {
 	return &model.Note{
 		ID:        fmt.Sprint(note.ID),
 		Title:     note.Title,
+		Icon:      note.Icon,
 		Content:   note.Content,
+		Parent:    helpers.Uint2String(note.Parent),
 		CreatedBy: fmt.Sprint(note.CreatedBy),
 		CreatedAt: note.CreatedAt,
 	}, nil
 }
 
 func (r *queryResolver) Notes(ctx context.Context, limit int, offset int) ([]model.Note, error) {
+	currentUser, _ := auth.ForContext(ctx)
+
 	var notes []models.Note
 
-	r.DB.Limit(limit).Offset(offset).Order("id desc").Find(&notes)
+	r.DB.
+		Where(&models.Note{
+			CreatedBy: *(helpers.String2Uint(&currentUser.ID)),
+		}).
+		Limit(limit).
+		Offset(offset).
+		Order("created_at desc").
+		Find(&notes)
 
 	var result []model.Note
 
@@ -42,7 +60,9 @@ func (r *queryResolver) Notes(ctx context.Context, limit int, offset int) ([]mod
 		result = append(result, model.Note{
 			ID:        fmt.Sprint(v.ID),
 			Title:     v.Title,
+			Icon:      v.Icon,
 			Content:   v.Content,
+			Parent:    helpers.Uint2String(v.Parent),
 			CreatedAt: v.CreatedAt,
 			CreatedBy: fmt.Sprint(v.CreatedBy),
 		})
