@@ -13,10 +13,16 @@ type Note struct {
 	CreatedAt time.Time `json:"createdAt"`
 }
 
-type NoteInput struct {
-	ID      *string `json:"id"`
+type NoteCreateInput struct {
 	Title   string  `json:"title"`
 	Icon    string  `json:"icon"`
 	Content string  `json:"content"`
 	Parent  *string `json:"parent"`
+}
+
+type NoteUpdateInput struct {
+	ID      string  `json:"id"`
+	Title   *string `json:"title"`
+	Icon    *string `json:"icon"`
+	Content *string `json:"content"`
 }

@@ -5,18 +5,27 @@ type Note
   icon: String!
   content: String!
   parent: ID
-  children: Note @goField(forceResolver: true)
+  children: [Note!]! @goField(forceResolver: true)
   createdBy: User! @goField(forceResolver: true)
   createdAt: Time!
 }
 
-input NoteInput
+input NoteCreateInput
   @goModel(
-    model: "github.com/ince01/note-server/internal/graph/model.NoteInput"
+    model: "github.com/ince01/note-server/internal/graph/model.NoteCreateInput"
   ) {
-  id: ID
   title: String!
   icon: String!
   content: String!
   parent: ID
+}
+
+input NoteUpdateInput
+  @goModel(
+    model: "github.com/ince01/note-server/internal/graph/model.NoteUpdateInput"
+  ) {
+  id: ID!
+  title: String
+  icon: String
+  content: String
 }

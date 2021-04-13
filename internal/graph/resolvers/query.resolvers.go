@@ -45,7 +45,7 @@ func (r *queryResolver) Notes(ctx context.Context, limit int, offset int) ([]mod
 
 	var notes []models.Note
 
-	r.DB.
+	tx := r.DB.
 		Where(&models.Note{
 			CreatedBy: *(helpers.String2Uint(&currentUser.ID)),
 		}).
@@ -53,6 +53,9 @@ func (r *queryResolver) Notes(ctx context.Context, limit int, offset int) ([]mod
 		Offset(offset).
 		Order("created_at desc").
 		Find(&notes)
+	if tx.Error != nil {
+		return nil, tx.Error
+	}
 
 	var result []model.Note
 

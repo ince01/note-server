@@ -48,8 +48,8 @@ type DirectiveRoot struct {
 
 type ComplexityRoot struct {
 	Mutation struct {
-		NoteCreate  func(childComplexity int, note model.NoteInput) int
-		NoteUpdate  func(childComplexity int, note model.NoteInput) int
+		NoteCreate  func(childComplexity int, note model.NoteCreateInput) int
+		NoteUpdate  func(childComplexity int, note model.NoteUpdateInput) int
 		TokenCreate func(childComplexity int, userCredential model.UserCredential) int
 		UserCreate  func(childComplexity int, user model.UserInput) int
 	}
@@ -91,13 +91,13 @@ type ComplexityRoot struct {
 }
 
 type MutationResolver interface {
-	NoteCreate(ctx context.Context, note model.NoteInput) (*model.Note, error)
-	NoteUpdate(ctx context.Context, note model.NoteInput) (*model.Note, error)
+	NoteCreate(ctx context.Context, note model.NoteCreateInput) (*model.Note, error)
+	NoteUpdate(ctx context.Context, note model.NoteUpdateInput) (*model.Note, error)
 	UserCreate(ctx context.Context, user model.UserInput) (*model.User, error)
 	TokenCreate(ctx context.Context, userCredential model.UserCredential) (*model.Token, error)
 }
 type NoteResolver interface {
-	Children(ctx context.Context, obj *model.Note) (*model.Note, error)
+	Children(ctx context.Context, obj *model.Note) ([]model.Note, error)
 	CreatedBy(ctx context.Context, obj *model.Note) (*model.User, error)
 }
 type QueryResolver interface {
@@ -131,7 +131,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.NoteCreate(childComplexity, args["note"].(model.NoteInput)), true
+		return e.complexity.Mutation.NoteCreate(childComplexity, args["note"].(model.NoteCreateInput)), true
 
 	case "Mutation.noteUpdate":
 		if e.complexity.Mutation.NoteUpdate == nil {
@@ -143,7 +143,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Mutation.NoteUpdate(childComplexity, args["note"].(model.NoteInput)), true
+		return e.complexity.Mutation.NoteUpdate(childComplexity, args["note"].(model.NoteUpdateInput)), true
 
 	case "Mutation.tokenCreate":
 		if e.complexity.Mutation.TokenCreate == nil {
@@ -420,8 +420,8 @@ directive @goField(
 directive @isAuthenticated on FIELD_DEFINITION
 `, BuiltIn: false},
 	{Name: "internal/graph/schemas/mutation.graphql", Input: `type Mutation {
-  noteCreate(note: NoteInput!): Note! @isAuthenticated
-  noteUpdate(note: NoteInput!): Note! @isAuthenticated
+  noteCreate(note: NoteCreateInput!): Note! @isAuthenticated
+  noteUpdate(note: NoteUpdateInput!): Note! @isAuthenticated
 
   userCreate(user: UserInput!): User!
 
@@ -473,20 +473,29 @@ enum Gender {
   icon: String!
   content: String!
   parent: ID
-  children: Note @goField(forceResolver: true)
+  children: [Note!]! @goField(forceResolver: true)
   createdBy: User! @goField(forceResolver: true)
   createdAt: Time!
 }
 
-input NoteInput
+input NoteCreateInput
   @goModel(
-    model: "github.com/ince01/note-server/internal/graph/model.NoteInput"
+    model: "github.com/ince01/note-server/internal/graph/model.NoteCreateInput"
   ) {
-  id: ID
   title: String!
   icon: String!
   content: String!
   parent: ID
+}
+
+input NoteUpdateInput
+  @goModel(
+    model: "github.com/ince01/note-server/internal/graph/model.NoteUpdateInput"
+  ) {
+  id: ID!
+  title: String
+  icon: String
+  content: String
 }
 `, BuiltIn: false},
 	{Name: "internal/graph/schemas/types/token.graphql", Input: `type Token
@@ -551,10 +560,10 @@ var parsedSchema = gqlparser.MustLoadSchema(sources...)
 func (ec *executionContext) field_Mutation_noteCreate_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 model.NoteInput
+	var arg0 model.NoteCreateInput
 	if tmp, ok := rawArgs["note"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("note"))
-		arg0, err = ec.unmarshalNNoteInput2githubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐNoteInput(ctx, tmp)
+		arg0, err = ec.unmarshalNNoteCreateInput2githubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐNoteCreateInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -566,10 +575,10 @@ func (ec *executionContext) field_Mutation_noteCreate_args(ctx context.Context, 
 func (ec *executionContext) field_Mutation_noteUpdate_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 model.NoteInput
+	var arg0 model.NoteUpdateInput
 	if tmp, ok := rawArgs["note"]; ok {
 		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("note"))
-		arg0, err = ec.unmarshalNNoteInput2githubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐNoteInput(ctx, tmp)
+		arg0, err = ec.unmarshalNNoteUpdateInput2githubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐNoteUpdateInput(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
@@ -726,7 +735,7 @@ func (ec *executionContext) _Mutation_noteCreate(ctx context.Context, field grap
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		directive0 := func(rctx context.Context) (interface{}, error) {
 			ctx = rctx // use context from middleware stack in children
-			return ec.resolvers.Mutation().NoteCreate(rctx, args["note"].(model.NoteInput))
+			return ec.resolvers.Mutation().NoteCreate(rctx, args["note"].(model.NoteCreateInput))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
 			if ec.directives.IsAuthenticated == nil {
@@ -788,7 +797,7 @@ func (ec *executionContext) _Mutation_noteUpdate(ctx context.Context, field grap
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		directive0 := func(rctx context.Context) (interface{}, error) {
 			ctx = rctx // use context from middleware stack in children
-			return ec.resolvers.Mutation().NoteUpdate(rctx, args["note"].(model.NoteInput))
+			return ec.resolvers.Mutation().NoteUpdate(rctx, args["note"].(model.NoteUpdateInput))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
 			if ec.directives.IsAuthenticated == nil {
@@ -1105,11 +1114,14 @@ func (ec *executionContext) _Note_children(ctx context.Context, field graphql.Co
 		return graphql.Null
 	}
 	if resTmp == nil {
+		if !graphql.HasFieldError(ctx, fc) {
+			ec.Errorf(ctx, "must not be null")
+		}
 		return graphql.Null
 	}
-	res := resTmp.(*model.Note)
+	res := resTmp.([]model.Note)
 	fc.Result = res
-	return ec.marshalONote2ᚖgithubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐNote(ctx, field.Selections, res)
+	return ec.marshalNNote2ᚕgithubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐNoteᚄ(ctx, field.Selections, res)
 }
 
 func (ec *executionContext) _Note_createdBy(ctx context.Context, field graphql.CollectedField, obj *model.Note) (ret graphql.Marshaler) {
@@ -2924,20 +2936,12 @@ func (ec *executionContext) ___Type_ofType(ctx context.Context, field graphql.Co
 
 // region    **************************** input.gotpl *****************************
 
-func (ec *executionContext) unmarshalInputNoteInput(ctx context.Context, obj interface{}) (model.NoteInput, error) {
-	var it model.NoteInput
+func (ec *executionContext) unmarshalInputNoteCreateInput(ctx context.Context, obj interface{}) (model.NoteCreateInput, error) {
+	var it model.NoteCreateInput
 	var asMap = obj.(map[string]interface{})
 
 	for k, v := range asMap {
 		switch k {
-		case "id":
-			var err error
-
-			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
-			it.ID, err = ec.unmarshalOID2ᚖstring(ctx, v)
-			if err != nil {
-				return it, err
-			}
 		case "title":
 			var err error
 
@@ -2967,6 +2971,50 @@ func (ec *executionContext) unmarshalInputNoteInput(ctx context.Context, obj int
 
 			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("parent"))
 			it.Parent, err = ec.unmarshalOID2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		}
+	}
+
+	return it, nil
+}
+
+func (ec *executionContext) unmarshalInputNoteUpdateInput(ctx context.Context, obj interface{}) (model.NoteUpdateInput, error) {
+	var it model.NoteUpdateInput
+	var asMap = obj.(map[string]interface{})
+
+	for k, v := range asMap {
+		switch k {
+		case "id":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("id"))
+			it.ID, err = ec.unmarshalNID2string(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "title":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("title"))
+			it.Title, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "icon":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("icon"))
+			it.Icon, err = ec.unmarshalOString2ᚖstring(ctx, v)
+			if err != nil {
+				return it, err
+			}
+		case "content":
+			var err error
+
+			ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("content"))
+			it.Content, err = ec.unmarshalOString2ᚖstring(ctx, v)
 			if err != nil {
 				return it, err
 			}
@@ -3184,6 +3232,9 @@ func (ec *executionContext) _Note(ctx context.Context, sel ast.SelectionSet, obj
 					}
 				}()
 				res = ec._Note_children(ctx, field, obj)
+				if res == graphql.Null {
+					atomic.AddUint32(&invalids, 1)
+				}
 				return res
 			})
 		case "createdBy":
@@ -3738,8 +3789,13 @@ func (ec *executionContext) marshalNNote2ᚖgithubᚗcomᚋince01ᚋnoteᚑserve
 	return ec._Note(ctx, sel, v)
 }
 
-func (ec *executionContext) unmarshalNNoteInput2githubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐNoteInput(ctx context.Context, v interface{}) (model.NoteInput, error) {
-	res, err := ec.unmarshalInputNoteInput(ctx, v)
+func (ec *executionContext) unmarshalNNoteCreateInput2githubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐNoteCreateInput(ctx context.Context, v interface{}) (model.NoteCreateInput, error) {
+	res, err := ec.unmarshalInputNoteCreateInput(ctx, v)
+	return res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) unmarshalNNoteUpdateInput2githubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐNoteUpdateInput(ctx context.Context, v interface{}) (model.NoteUpdateInput, error) {
+	res, err := ec.unmarshalInputNoteUpdateInput(ctx, v)
 	return res, graphql.ErrorOnPath(ctx, err)
 }
 

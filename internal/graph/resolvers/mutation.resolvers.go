@@ -15,12 +15,11 @@ import (
 	"github.com/ince01/note-server/pkg/jwt"
 )
 
-func (r *mutationResolver) NoteCreate(ctx context.Context, note model.NoteInput) (*model.Note, error) {
+func (r *mutationResolver) NoteCreate(ctx context.Context, note model.NoteCreateInput) (*model.Note, error) {
 	currentUser, _ := auth.ForContext(ctx)
 
 	if note.Parent != nil {
-		parentNote := &models.Note{}
-		tx := r.DB.First(parentNote, *note.Parent)
+		tx := r.DB.First(&models.Note{}, *note.Parent)
 		if tx.Error != nil {
 			return nil, fmt.Errorf("parent note not found")
 		}
@@ -51,7 +50,7 @@ func (r *mutationResolver) NoteCreate(ctx context.Context, note model.NoteInput)
 	}, nil
 }
 
-func (r *mutationResolver) NoteUpdate(ctx context.Context, note model.NoteInput) (*model.Note, error) {
+func (r *mutationResolver) NoteUpdate(ctx context.Context, note model.NoteUpdateInput) (*model.Note, error) {
 	updatedNote := models.Note{}
 
 	tx := r.DB.First(&updatedNote, note.ID)
@@ -59,8 +58,15 @@ func (r *mutationResolver) NoteUpdate(ctx context.Context, note model.NoteInput)
 		return nil, tx.Error
 	}
 
-	updatedNote.Title = note.Title
-	updatedNote.Content = note.Content
+	if note.Title != nil {
+		updatedNote.Title = *note.Title
+	}
+	if note.Icon != nil {
+		updatedNote.Icon = *note.Icon
+	}
+	if note.Content != nil {
+		updatedNote.Content = *note.Content
+	}
 
 	tx = r.DB.Save(&updatedNote)
 	if tx.Error != nil {
