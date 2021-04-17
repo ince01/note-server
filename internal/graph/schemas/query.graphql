@@ -1,6 +1,6 @@
 type Query {
   note(id: Int!): Note @isAuthenticated
-  notes(limit: Int!, offset: Int!): [Note!]! @isAuthenticated
+  notes(parent: Int, limit: Int!, offset: Int!): [Note!]! @isAuthenticated
 
   user: User @isAuthenticated
 }

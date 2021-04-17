@@ -40,7 +40,7 @@ func (r *queryResolver) Note(ctx context.Context, id int) (*model.Note, error) {
 	}, nil
 }
 
-func (r *queryResolver) Notes(ctx context.Context, limit int, offset int) ([]model.Note, error) {
+func (r *queryResolver) Notes(ctx context.Context, parent *int, limit int, offset int) ([]model.Note, error) {
 	currentUser, _ := auth.ForContext(ctx)
 
 	var notes []models.Note
@@ -51,8 +51,15 @@ func (r *queryResolver) Notes(ctx context.Context, limit int, offset int) ([]mod
 		}).
 		Limit(limit).
 		Offset(offset).
-		Order("created_at desc").
-		Find(&notes)
+		Order("created_at desc")
+
+	if parent != nil {
+		tx.Where("parent = ?", *parent)
+	} else {
+		tx.Where("parent IS NULL")
+	}
+
+	tx.Find(&notes)
 	if tx.Error != nil {
 		return nil, tx.Error
 	}

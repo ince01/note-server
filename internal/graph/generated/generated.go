@@ -67,7 +67,7 @@ type ComplexityRoot struct {
 
 	Query struct {
 		Note  func(childComplexity int, id int) int
-		Notes func(childComplexity int, limit int, offset int) int
+		Notes func(childComplexity int, parent *int, limit int, offset int) int
 		User  func(childComplexity int) int
 	}
 
@@ -102,7 +102,7 @@ type NoteResolver interface {
 }
 type QueryResolver interface {
 	Note(ctx context.Context, id int) (*model.Note, error)
-	Notes(ctx context.Context, limit int, offset int) ([]model.Note, error)
+	Notes(ctx context.Context, parent *int, limit int, offset int) ([]model.Note, error)
 	User(ctx context.Context) (*model.User, error)
 }
 
@@ -247,7 +247,7 @@ func (e *executableSchema) Complexity(typeName, field string, childComplexity in
 			return 0, false
 		}
 
-		return e.complexity.Query.Notes(childComplexity, args["limit"].(int), args["offset"].(int)), true
+		return e.complexity.Query.Notes(childComplexity, args["parent"].(*int), args["limit"].(int), args["offset"].(int)), true
 
 	case "Query.user":
 		if e.complexity.Query.User == nil {
@@ -430,7 +430,7 @@ directive @isAuthenticated on FIELD_DEFINITION
 `, BuiltIn: false},
 	{Name: "internal/graph/schemas/query.graphql", Input: `type Query {
   note(id: Int!): Note @isAuthenticated
-  notes(limit: Int!, offset: Int!): [Note!]! @isAuthenticated
+  notes(parent: Int, limit: Int!, offset: Int!): [Note!]! @isAuthenticated
 
   user: User @isAuthenticated
 }
@@ -650,24 +650,33 @@ func (ec *executionContext) field_Query_note_args(ctx context.Context, rawArgs m
 func (ec *executionContext) field_Query_notes_args(ctx context.Context, rawArgs map[string]interface{}) (map[string]interface{}, error) {
 	var err error
 	args := map[string]interface{}{}
-	var arg0 int
-	if tmp, ok := rawArgs["limit"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
-		arg0, err = ec.unmarshalNInt2int(ctx, tmp)
+	var arg0 *int
+	if tmp, ok := rawArgs["parent"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("parent"))
+		arg0, err = ec.unmarshalOInt2ᚖint(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["limit"] = arg0
+	args["parent"] = arg0
 	var arg1 int
-	if tmp, ok := rawArgs["offset"]; ok {
-		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("offset"))
+	if tmp, ok := rawArgs["limit"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("limit"))
 		arg1, err = ec.unmarshalNInt2int(ctx, tmp)
 		if err != nil {
 			return nil, err
 		}
 	}
-	args["offset"] = arg1
+	args["limit"] = arg1
+	var arg2 int
+	if tmp, ok := rawArgs["offset"]; ok {
+		ctx := graphql.WithPathContext(ctx, graphql.NewPathWithField("offset"))
+		arg2, err = ec.unmarshalNInt2int(ctx, tmp)
+		if err != nil {
+			return nil, err
+		}
+	}
+	args["offset"] = arg2
 	return args, nil
 }
 
@@ -1279,7 +1288,7 @@ func (ec *executionContext) _Query_notes(ctx context.Context, field graphql.Coll
 	resTmp, err := ec.ResolverMiddleware(ctx, func(rctx context.Context) (interface{}, error) {
 		directive0 := func(rctx context.Context) (interface{}, error) {
 			ctx = rctx // use context from middleware stack in children
-			return ec.resolvers.Query().Notes(rctx, args["limit"].(int), args["offset"].(int))
+			return ec.resolvers.Query().Notes(rctx, args["parent"].(*int), args["limit"].(int), args["offset"].(int))
 		}
 		directive1 := func(ctx context.Context) (interface{}, error) {
 			if ec.directives.IsAuthenticated == nil {
@@ -4158,6 +4167,21 @@ func (ec *executionContext) marshalOID2ᚖstring(ctx context.Context, sel ast.Se
 		return graphql.Null
 	}
 	return graphql.MarshalID(*v)
+}
+
+func (ec *executionContext) unmarshalOInt2ᚖint(ctx context.Context, v interface{}) (*int, error) {
+	if v == nil {
+		return nil, nil
+	}
+	res, err := graphql.UnmarshalInt(v)
+	return &res, graphql.ErrorOnPath(ctx, err)
+}
+
+func (ec *executionContext) marshalOInt2ᚖint(ctx context.Context, sel ast.SelectionSet, v *int) graphql.Marshaler {
+	if v == nil {
+		return graphql.Null
+	}
+	return graphql.MarshalInt(*v)
 }
 
 func (ec *executionContext) marshalONote2ᚖgithubᚗcomᚋince01ᚋnoteᚑserverᚋinternalᚋgraphᚋmodelᚐNote(ctx context.Context, sel ast.SelectionSet, v *model.Note) graphql.Marshaler {
